@@ -1,4 +1,46 @@
-# vinext-starter
+# Mobile cross-network LiveKit site
+
+This separate hosted application uses LiveKit Cloud for media and data messages. It does not replace or restart the original local demo at `http://127.0.0.1:4173/`.
+
+## Setup and secrets
+
+Create a LiveKit Cloud project in the LiveKit dashboard. From that project's settings/API keys, obtain the project WebSocket URL and an API key/secret pair. Enter them locally in ignored `site/.env.livekit.local` using these names:
+
+```dotenv
+LIVEKIT_URL=
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+CREATOR_KEY=
+INVITE_SIGNING_KEY=
+```
+
+`LIVEKIT_URL` is the project's `wss://` endpoint. `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` sign participant tokens on the server. Generate independent, cryptographically random values of at least 32 bytes for `CREATOR_KEY` (owner access) and `INVITE_SIGNING_KEY` (viewer invites). Keep the creator key available privately on the broadcasting device. Do not paste secret values into chat, source, shell command arguments, screenshots, or Git. `.env.livekit.example` contains names only; `.env.livekit.local` is ignored and is never copied into the deployment checkout.
+
+Local configuration is not uploaded automatically. All five values must be configured as **secret** runtime entries through the native Sites environment-variable tool, then applied by deploying a saved version. Verify the returned entries are marked `is_secret: true` and redact values. Never put runtime secrets into `.openai/hosting.json` or client environment variables. The current API reads Worker runtime environment values; the ignored file is a private setup/transfer input, not a browser configuration file.
+
+## Access and lifetime
+
+The approved hosted design has a public landing page after successful credentialed smoke tests. Creating a broadcast requires the separate owner creator key. Watching requires a signed viewer invite; the invite expires 12 hours after creation. Anyone receiving a forwarded invite can use it until expiry. It is a bearer link, not an account-specific invitation. Viewer tokens cannot publish camera/microphone media; participants can send chat data. Do not post private invite links publicly.
+
+Keep the broadcasting phone/browser online with camera and microphone access. Turning off the owner's PC does not keep a stream originating on that PC online. A phone can broadcast while the PC is off only while the phone, its page, and its network connection remain active. Stopping or leaving the broadcast disconnects the host; no recording or replay is provided. Invite expiry prevents new token issuance after expiry; it does not forcibly disconnect an existing participant.
+
+## Publication and verification
+
+Site URL: <https://mobile-cross-network-live.sureflea64.chatgpt.site>. Registration alone does not establish deployment or media readiness. The Site stays owner-private until all five runtime secrets and credentialed endpoint smoke tests pass. An unconfigured deployment returns HTTP 503 from room creation/join and cannot stream.
+
+The source manifest preserves the Site ID. Reuse it; do not register a second Site. Copy only intended non-secret source into ignored `site/.sites-checkout/`, install dependencies there, and run the Sites source helper **from that checkout**. Exclude `.env*`, `node_modules`, generated output, runtime data, and unrelated root files. The helper owns the checkout's separate Git repository, pushes source, and packages the exact pushed commit. Its short-lived source credential is held in memory and supplied only through hidden stdin.
+
+Before publication, run:
+
+```powershell
+npm --prefix site test
+npm --prefix site run build
+npm test
+```
+
+Real cross-network proof requires two devices on different networks (for example a broadcasting phone on mobile data and a viewer on another network). Start a broadcast with the creator key; open its fresh invite on the viewer; verify video, audio, chat in both directions, viewer count, and that stopping ends media. A single-machine preview, token test, successful deployment, or same-network test does not prove this. See the Task 4 report for the deployment and verification status recorded during setup.
+
+## Starter reference
 
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 

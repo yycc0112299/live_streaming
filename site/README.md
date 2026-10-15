@@ -26,7 +26,7 @@ Keep the broadcasting phone/browser online with camera and microphone access. Tu
 
 ## Publication and verification
 
-Site URL: <https://mobile-cross-network-live.sureflea64.chatgpt.site>. Registration alone does not establish deployment or media readiness. The Site stays owner-private until all five runtime secrets and credentialed endpoint smoke tests pass. An unconfigured deployment returns HTTP 503 from room creation/join and cannot stream.
+Site URL: <https://mobile-cross-network-live.sureflea64.chatgpt.site>. As of 2026-10-15, the Site is deployed and public, while room creation still requires the private creator key and viewing still requires a signed invite. All five runtime entries are configured as Sites secrets. The LiveKit RoomService credential check and participant signaling validation returned HTTP 200 with the current credentials; private and public hosted endpoint smoke tests each passed 10/10 checks. This verifies deployment and authorization, **not** real two-device media delivery. An unconfigured deployment returns HTTP 503 from room creation/join and cannot stream.
 
 The source manifest preserves the Site ID. Reuse it; do not register a second Site. Copy only intended non-secret source into ignored `site/.sites-checkout/`, install dependencies there, and run the Sites source helper **from that checkout**. Exclude `.env*`, `node_modules`, generated output, runtime data, and unrelated root files. The helper owns the checkout's separate Git repository, pushes source, and packages the exact pushed commit. Its short-lived source credential is held in memory and supplied only through hidden stdin.
 
@@ -38,7 +38,7 @@ npm --prefix site run build
 npm test
 ```
 
-Real cross-network proof requires two devices on different networks (for example a broadcasting phone on mobile data and a viewer on another network). Start a broadcast with the creator key; open its fresh invite on the viewer; verify video, audio, chat in both directions, viewer count, and that stopping ends media. A single-machine preview, token test, successful deployment, or same-network test does not prove this. See the Task 4 report for the deployment and verification status recorded during setup.
+Real cross-network proof requires two devices on different networks (for example a broadcasting phone on mobile data and a viewer on another network). Start a broadcast with the creator key; open its fresh invite on the viewer; verify video, audio, chat in both directions, viewer count, and that stopping ends media. That test has not yet been completed. A single-machine preview, token test, successful deployment, or same-network test does not prove this.
 
 ## Starter reference
 
@@ -46,8 +46,8 @@ A clean full-stack starter running on [vinext](https://github.com/cloudflare/vin
 
 ## Prerequisites
 
-- Node.js `>=22.13.0`
-- Portable: Windows, macOS, or Linux; no Bash required
+- Node.js `>=22.18.0` (the test suite imports TypeScript directly)
+- Portable local development: Windows, macOS, or Linux; the portable dev/build scripts do not require Bash. The Sites publishing helper may require Bash; use the supported publishing workflow for your host.
 - Managed Linux: managed Linux runtime with Bash, `flock`, `curl`, `sha256sum`, and GNU `timeout`
 - Git is required only for publishing
 

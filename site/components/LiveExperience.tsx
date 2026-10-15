@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Room, RoomEvent, Track, createLocalTracks, type RemoteTrack } from 'livekit-client';
 import { Camera, Radio, ArrowUpRight, Eye, Link2, Mic, MicOff, VideoOff, Send, Square, Volume2 } from 'lucide-react';
-import { decodeChatPayload, inviteFromInput, joinViewerSession, MAX_CHAT_BYTES, startHostSession, stopSession } from '../lib/live-session';
+import { decodeChatPayload, inviteFromInput, joinViewerSession, leaveSession, MAX_CHAT_BYTES, startHostSession, stopSession } from '../lib/live-session';
 
 type Mode = 'host' | 'viewer';
 type Status = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'offline';
@@ -57,17 +57,15 @@ export default function LiveExperience() {
     window.addEventListener('hashchange', readInvite);
     window.addEventListener('offline', offline);
     window.addEventListener('online', online);
-    const leave = () => {
-      operation.current += 1; requestRef.current?.abort();
-      if (roomRef.current) void stopSession(roomRef.current).catch(() => {});
-    };
-    window.addEventListener('pagehide', leave);
+    const onPageHide = () => { void leave(); };
+    window.addEventListener('pagehide', onPageHide);
     return () => {
       window.removeEventListener('hashchange', readInvite);
       window.removeEventListener('offline', offline);
       window.removeEventListener('online', online);
-      window.removeEventListener('pagehide', leave);
-      leave();
+      window.removeEventListener('pagehide', onPageHide);
+      operation.current += 1; requestRef.current?.abort();
+      if (roomRef.current) void stopSession(roomRef.current).catch(() => {});
       for (const [track, element] of attached.current) { track.detach(element); element.remove(); }
       attached.current.clear();
     };
@@ -165,10 +163,11 @@ export default function LiveExperience() {
   }
 
   async function leave() {
-    ++operation.current; requestRef.current?.abort(); requestRef.current = null;
-    const room = roomRef.current; roomRef.current = null;
-    setBusy(false); setStatus('idle'); setViewers(0); setNeedsAudio(false); setNotice('已離開直播。'); clearMedia();
-    if (room) { await stopSession(room).catch(() => setError('離線清理未完成，請關閉此分頁。')); room.removeAllListeners(); }
+    const room = roomRef.current;
+    await leaveSession({ operation, request: requestRef, room: roomRef }, () => {
+      setBusy(false); setStatus('idle'); setViewers(0); setNeedsAudio(false); setNotice('已離開直播。'); clearMedia();
+    }).catch(() => setError('離線清理未完成，請關閉此分頁。'));
+    room?.removeAllListeners();
   }
 
   async function toggle(kind: 'camera' | 'mic') {

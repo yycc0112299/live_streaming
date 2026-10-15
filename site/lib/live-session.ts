@@ -62,6 +62,22 @@ export async function stopSession(room: LiveKitRoomLike): Promise<void> {
   await room.disconnect();
 }
 
+export async function leaveSession<T extends LiveKitRoomLike>(refs: {
+  operation: { current: number };
+  request: { current: AbortController | null };
+  room: { current: T | null };
+}, resetView: () => void): Promise<void> {
+  // Invalidate callbacks and unlock the restored page before disconnect can await.
+  refs.operation.current += 1;
+  const request = refs.request.current;
+  refs.request.current = null;
+  const room = refs.room.current;
+  refs.room.current = null;
+  request?.abort();
+  resetView();
+  if (room) await stopSession(room);
+}
+
 export const MAX_CHAT_BYTES = 500;
 export function decodeChatPayload(bytes: Uint8Array): string | null {
   if (!bytes.byteLength || bytes.byteLength > MAX_CHAT_BYTES) return null;

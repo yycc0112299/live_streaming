@@ -85,6 +85,45 @@ test('a late connection is disconnected again after cancellation', async () => {
   assert.equal(calls.filter(([name]) => name === 'disconnect').length, 2);
 });
 
+// Catches a BFCache-restored page retaining the old room and connected UI while disconnect is pending.
+test('page departure clears session refs and resets the view before asynchronous disconnect', async () => {
+  const { room } = roomFixture();
+  const camera = trackFixture();
+  await session.startHostSession(room, 'url', 'token', async () => [camera]);
+  const request = new AbortController();
+  const refs = { operation: { current: 7 }, request: { current: request }, room: { current: room } };
+  const view = { status: 'connected', busy: true, viewers: 2, needsAudio: true, hasVideo: true };
+  let resolveDisconnect;
+  let snapshotAtDisconnect;
+  room.disconnect = () => {
+    snapshotAtDisconnect = { room: refs.room.current, ...view };
+    return new Promise(resolve => { resolveDisconnect = resolve; });
+  };
+  const leaving = session.leaveSession(refs, () => {
+    Object.assign(view, { status: 'idle', busy: false, viewers: 0, needsAudio: false, hasVideo: false });
+  });
+  assert.equal(refs.operation.current, 8);
+  assert.equal(refs.room.current, null);
+  assert.equal(refs.request.current, null);
+  assert.equal(request.signal.aborted, true);
+  assert.equal(camera.stopped, true);
+  assert.deepEqual(snapshotAtDisconnect, { room: null, status: 'idle', busy: false, viewers: 0, needsAudio: false, hasVideo: false });
+  resolveDisconnect();
+  await leaving;
+});
+
+// Catches a request-only page departure leaving the form locked or a stale response authorized.
+test('page departure resets a pending join even when no room exists', async () => {
+  const request = new AbortController();
+  const refs = { operation: { current: 3 }, request: { current: request }, room: { current: null } };
+  let busy = true;
+  await session.leaveSession(refs, () => { busy = false; });
+  assert.equal(refs.operation.current, 4);
+  assert.equal(refs.request.current, null);
+  assert.equal(request.signal.aborted, true);
+  assert.equal(busy, false);
+});
+
 // Catches oversized UTF-8, invalid encodings, and HTML interpretation/rewriting.
 test('chat accepts bounded plain text and drops malformed or oversized payloads', () => {
   const encode = value => new TextEncoder().encode(value);

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>PureCast · 自己的直播空間</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="PureCast 首頁"><span class="brand-mark">◉</span><span>PureCast</span><small>LIVE STUDIO</small></a>
+      <span class="top-status"><span class="status-dot"></span> 本機展示版</span>
+    </header>
+
+    <main>
+      <section class="hero" id="welcome">
+        <div class="hero-copy">
+          <div class="eyebrow">CREATE · BROADCAST · CONNECT</div>
+          <h1>你的舞台，<br><em>現在就開播。</em></h1>
+          <p>用鏡頭和麥克風即時分享，送出房間連結就能一起觀看、聊天。從第一場直播開始，打造屬於自己的平台。</p>
+          <div class="feature-row"><span>● 低延遲影像</span><span>● 即時聊天室</span><span>● 一鍵分享</span></div>
+        </div>
+        <div class="entry-card">
+          <div class="card-tabs" aria-hidden="true"><span class="active">開始直播</span><span>加入觀看</span></div>
+          <form id="host-form" class="entry-form">
+            <label for="stream-title">直播標題</label>
+            <input id="stream-title" name="title" maxlength="80" placeholder="例如：我們的第一次直播" required>
+            <p class="helper">開播時瀏覽器會詢問鏡頭與麥克風權限。</p>
+            <button class="primary-button" id="start-button" type="submit"><span>◉</span> 開始直播</button>
+          </form>
+          <div class="divider"><span>或使用房間代碼觀看</span></div>
+          <form id="join-form" class="entry-form join-form">
+            <label for="room-code">房間代碼</label>
+            <div class="join-input"><input id="room-code" name="room" maxlength="6" pattern="[A-Fa-f0-9]{6}" placeholder="輸入 6 位代碼" required><button type="submit">加入觀看 →</button></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="live-layout hidden" id="live-layout" aria-label="直播室">
+        <div class="room-main">
+          <div class="room-heading"><div><span class="live-badge">● LIVE</span><h1 id="room-title">直播室</h1><p id="room-subtitle">正在連接…</p></div><button id="leave-button" class="outline-button" type="button">結束並離開</button></div>
+          <div class="video-frame"><video id="live-video" autoplay playsinline></video><div class="video-placeholder" id="video-placeholder"><span class="pulse">◉</span><strong>等待直播影像</strong><small>連接完成後會自動播放</small></div><button id="play-button" class="play-button hidden" type="button">點擊播放影像</button><span id="video-label" class="video-label">LIVE</span></div>
+          <div class="room-tools"><div class="room-code">房間代碼 <strong id="current-code">------</strong></div><button id="copy-button" class="soft-button" type="button">複製觀看連結</button><span id="viewer-count">0 位觀眾</span></div>
+        </div>
+        <aside class="chat-card"><div class="chat-heading"><div><span class="chat-icon">✦</span><strong>即時聊天室</strong></div><span>LIVE CHAT</span></div><div id="chat-messages" class="chat-messages" role="log" aria-live="polite"><p class="chat-empty">歡迎來到直播間，打聲招呼吧！</p></div><form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">聊天訊息</label><input id="chat-input" maxlength="500" placeholder="輸入訊息…" autocomplete="off" required><button type="submit" aria-label="送出訊息">➤</button></form></aside>
+      </section>
+      <p id="notice" class="notice hidden" role="status"></p>
+    </main>
+
+    <footer><span>PureCast · Original live platform prototype</span><span>Inspired by Pure Live · Built for self-broadcasting</span></footer>
+  </div>
+</body>
+</html>

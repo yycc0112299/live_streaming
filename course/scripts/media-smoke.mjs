@@ -53,7 +53,7 @@ try {
   publisher.stdin.write('q');
   await publisher.done;
   await waitFor(async () => !(await state()).live);
-  const report = { at: new Date().toISOString(), source: 'synthetic 720p30 H.264 + 48kHz AAC', liveStatus: true, hlsPlaylist: true, independentAudioVideoDecoders: 2, frames, offlineAfterStop: true, realOBS: false, azure: false };
+  const report = { at: new Date().toISOString(), source: 'synthetic 720p30 H.264 + 48kHz AAC', liveStatus: true, hlsPlaylist: true, independentAudioVideoDecoders: 2, frames, offlineAfterStop: true, realOBS: false, azure: process.env.TEST_ENVIRONMENT === 'azure-vm' };
   await writeFile(new URL('../.runtime/media-smoke.json', import.meta.url), JSON.stringify(report, null, 2));
   console.log('MEDIA_SMOKE_PASS: live, HLS, two A/V decoders, offline after stop. Evidence: .runtime/media-smoke.json');
 } finally {

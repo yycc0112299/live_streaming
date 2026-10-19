@@ -22,6 +22,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: sh -n deploy/install-native.sh
       - run: node scripts/configure.mjs --docker
       - run: docker compose -f deploy/compose.yml config --quiet
       - run: docker build -f deploy/Dockerfile .

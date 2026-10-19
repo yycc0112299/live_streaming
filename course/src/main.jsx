@@ -4,7 +4,8 @@ import Hls from 'hls.js';
 import { io } from 'socket.io-client';
 import './style.css';
 
-const socket = io({ autoConnect: false });
+const base = import.meta.env.BASE_URL;
+const socket = io({ autoConnect: false, path: `${base}socket.io` });
 
 function Player({ live }) {
   const video = useRef(null);
@@ -14,7 +15,7 @@ function Player({ live }) {
     setError('');
     if (!live) return;
     const element = video.current;
-    const source = '/hls/live/index.m3u8';
+    const source = `${base}hls/live/index.m3u8`;
     let hls;
     let retryTimer;
     const failed = () => {
@@ -89,7 +90,7 @@ function App() {
     catch { setNotice(`觀看連結：${location.href}`); }
   }
   return <>
-    <header className="topbar"><a href="/" className="brand"><span className="brand-icon">◉</span> CLOUD<span>LIVE</span><small>GROUP 09</small></a><span className="course-tag">電子工程總整課程 · NTUST</span><span className={`connection ${connected ? 'online' : ''}`}>{connected ? '已連線' : '重新連線中…'}</span></header>
+    <header className="topbar"><a href={base} className="brand"><span className="brand-icon">◉</span> CLOUD<span>LIVE</span><small>GROUP 09</small></a><span className="course-tag">電子工程總整課程 · NTUST</span><span className={`connection ${connected ? 'online' : ''}`}>{connected ? '已連線' : '重新連線中…'}</span></header>
     <main>
       <div className="eyebrow">ONE ROOM. SHARED MOMENTS.</div>
       <div className="heading"><div><h1>讓每個瞬間，<em>即時相聚。</em></h1><p>一場直播，一個聊天室。打開瀏覽器，就在現場。</p></div><button className="share" onClick={share}>↗ 分享直播間</button></div>

@@ -1,5 +1,7 @@
 # Group 9 — 課程最終實作
 
+已部署的課程展示入口：[Cloud Live](http://20.89.110.14/group9/)。測試彩條結束後會顯示 OFFLINE，需由 OBS 開播才有影音。實際驗證範圍見 [VERIFICATION.md](VERIFICATION.md)。
+
 依 `Group9_英文講稿_2026-10-19.md` 的七頁內容實作：**OBS → RTMP → MediaMTX → HLS → React / hls.js**；聊天用 **Node.js / Socket.IO**。一間房、一位主播，影音與聊天分流。原本根目錄 WebRTC demo 與 `site/` LiveKit 版本保留。
 
 ## 功能與簡報對照
@@ -33,6 +35,24 @@ OBS 的 **Settings → Stream → Custom**：從本機 `.runtime/OBS-PRIVATE.txt
 安裝腳本固定 MediaMTX 1.21.2，並核對官方 SHA-256。生成的 256-bit 主播密碼只寫入忽略的私人檔案，重跑不覆寫。若重新產生密碼，OBS 也須更新。
 
 ## Azure Ubuntu VM 部署
+
+### 本次已使用的原生服務模式
+
+既有 VM 是 ARM64 Ubuntu 24.04，已有 Apache 與其他課程服務。因此本次實際部署採用原生 Node / MediaMTX + systemd，沒有替換原本網站，也沒有安裝 Docker。服務名稱為 `group9-web`、`group9-media`；執行目錄為 `/opt/group9-live/releases/course-final-20261019/course`；私人設定存於 `/opt/group9-live/shared/`。Node 與 MediaMTX 均固定版本、核對官方 SHA-256，應用以無登入權限的 `group9-live` 系統帳號執行。
+
+原生安裝器是 `deploy/install-native.sh`。將非秘密的課程來源放到 `/opt/group9-live/releases/<commit>/course`，以 root 執行該腳本即可安裝／測試／建置並設定自動啟動；它不改 VM 的全域 Node 版本。舊版與新版 release 可並存，私人設定保留。若要保留 Apache 的根目錄網站，使用 `APP_BASE=/group9/ npm run build`，並啟用 `deploy/apache-group9.conf`。開啟此路徑前先執行 `apache2ctl configtest`，再 reload；不要覆寫既有站台設定。
+
+目前觀看入口與即時驗收結果見 `VERIFICATION.md`。Apache 子路徑模式只公開課程網頁、HLS 與聊天室，MediaMTX 控制 API 與 RTMP 仍只接受 loopback；主播繼續走 SSH tunnel。原生模式的直播密碼位於 VM `/opt/group9-live/shared/OBS-PRIVATE.txt`，僅限管理者與服務帳號讀取，不放入網頁、GitHub 或講稿。
+
+```sh
+sudo systemctl status group9-web group9-media
+sudo journalctl -u group9-web -u group9-media --since '10 minutes ago'
+sudo systemctl restart group9-web group9-media
+```
+
+HTTP 展示入口沒有 TLS 加密，只適合公開的課程演示內容；私人影音／敏感聊天應先配置自有網域與 HTTPS，或使用下面的 SSH tunnel。Apache 同時代理 HTTP 與 Socket.IO WebSocket 的設定依[官方說明](https://httpd.apache.org/docs/2.4/mod/mod_proxy.html#protoupgrade)。
+
+### 可攜 Docker 模式（備選）
 
 使用既有 VM，不建立新的計費資源。先以課程既有 SSH 帳號連線，保留原本 `week5-lab` 等服務。在 VM 安裝官方 Docker Engine / Compose plugin 及 Node.js 22.18+ 後：
 

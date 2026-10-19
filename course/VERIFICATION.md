@@ -24,8 +24,10 @@
 - 原生 Node.js 24.18.0 與 MediaMTX 1.21.2 均核對官方 SHA-256。VM 上測試 5/5、建置成功；`group9-web` 與 `group9-media` systemd 服務均 `active`，設定為開機啟動；`/api/status` 顯示服務可用。
 - 公開展示入口：<http://20.89.110.14/group9/>。這是 HTTP 課程演示入口，尚未配置自有網域／HTTPS。原本 `/` 首頁在代理啟用前後 SHA-256 相同。
 - 外部 Chrome 已實際播放 Azure HLS，讀回 1280×720、`readyState=4`、`paused=false`。兩個外部觀看分頁以不同測試暱稱互傳訊息，按讚數同步。畫面：`evidence/azure-live.png`。
+- Azure VM 上的真實 RTMP/HLS 合成影音驗收也已通過：兩個影音解碼器各輸出 90 影格；停止推流後變成 OFFLINE、服務仍可用。見 `evidence/azure-media-smoke.json` 與 `evidence/azure-run-output.txt`，驗收時間為臺灣時間 13:56。
 - 外部 FFmpeg 經公開 `/group9/hls/live/index.m3u8` 解碼影音，成功結束，輸出 60 影格，見 `evidence/azure-external-decode.txt`。這是傳輸／解碼驗證，不是延遲、穩定 FPS 或容量壓測。
 - GitHub Actions 第一筆執行 [39206426173](https://github.com/yycc0112299/live_streaming/actions/runs/39206426173) 成功，包含 Linux 測試、正式建置、Compose 設定檢查與 Docker image 建置。Docker 是可攜備選模式，VM 本次實際使用原生 systemd。
+- 部署程式提交 `3cbf918` 的 [push 檢查](https://github.com/yycc0112299/live_streaming/actions/runs/39207095213) 與 [PR 檢查](https://github.com/yycc0112299/live_streaming/actions/runs/39207098617) 均成功。
 - Windows `powershell -File scripts/start.ps1` 亦已實際啟動成功，健康端點可用。
 
 ## 尚未通過／操作限制

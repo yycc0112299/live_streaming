@@ -1,0 +1,61 @@
+Enable succeeded: 
+[stdout]
+
+> group9-cloud-live@1.0.0 build
+> vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 53 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.43 kB │ gzip:   0.30 kB
+dist/assets/index-najvwvAi.css    7.22 kB │ gzip:   2.37 kB
+dist/assets/index-CQa59tzz.js   865.19 kB │ gzip: 271.23 kB
+✓ built in 3.56s
+Enabling module proxy.
+Considering dependency proxy for proxy_http:
+Module proxy already enabled
+Enabling module proxy_http.
+To activate the new configuration, you need to run:
+  systemctl restart apache2
+Enabling conf group9-live.
+To activate the new configuration, you need to run:
+  systemctl reload apache2
+Existing root course page unchanged.
+{"live":false,"available":true,"viewers":0,"likes":0,"status":"ok"}
+RTMP publisher live; HLS playlist available. Decoding with two independent viewers.
+Two audio/video decode checks passed: 90, 90 frames.
+Holding the synthetic stream for 180s of browser QA.
+MEDIA_SMOKE_PASS: live, HLS, two A/V decoders, offline after stop. Evidence: .runtime/media-smoke.json
+{
+  "at": "2026-10-19T05:56:54.583Z",
+  "source": "synthetic 720p30 H.264 + 48kHz AAC",
+  "liveStatus": true,
+  "hlsPlaylist": true,
+  "independentAudioVideoDecoders": 2,
+  "frames": [
+    90,
+    90
+  ],
+  "offlineAfterStop": true,
+  "realOBS": false,
+  "azure": true
+}
+[stderr]
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Syntax OK
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.

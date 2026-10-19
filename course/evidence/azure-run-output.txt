@@ -1,4 +1,4 @@
-Enable succeeded: 
+Enable succeeded:
 [stdout]
 
 > group9-cloud-live@1.0.0 build

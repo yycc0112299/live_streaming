@@ -1,0 +1,4 @@
+{$LIVE_DOMAIN} {
+    encode gzip zstd
+    reverse_proxy 127.0.0.1:4180
+}

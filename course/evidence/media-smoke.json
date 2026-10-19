@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-19T05:44:39.657Z",
+  "source": "synthetic 720p30 H.264 + 48kHz AAC",
+  "liveStatus": true,
+  "hlsPlaylist": true,
+  "independentAudioVideoDecoders": 2,
+  "frames": [
+    90,
+    90
+  ],
+  "offlineAfterStop": true,
+  "realOBS": false,
+  "azure": false
+}

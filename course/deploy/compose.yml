@@ -1,0 +1,29 @@
+services:
+  media:
+    image: bluenviron/mediamtx:1.21.2
+    restart: unless-stopped
+    volumes:
+      - ./mediamtx.private.yml:/mediamtx.yml:ro
+    ports:
+      - "127.0.0.1:1935:1935"
+    networks: [live]
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4180
+      MEDIAMTX_API_URL: http://media:9997
+      MEDIAMTX_HLS_URL: http://media:8888
+    ports:
+      - "127.0.0.1:4180:4180"
+    depends_on: [media]
+    networks: [live]
+    init: true
+networks:
+  live:
+    ipam:
+      config:
+        - subnet: 172.30.9.0/24

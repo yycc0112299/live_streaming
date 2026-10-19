@@ -1,5 +1,9 @@
 # Live Streaming Platform
 
+## Group 9 course final version
+
+The presentation's OBS → RTMP → MediaMTX → HLS stack is implemented in **[course/](course/README.md)** with React/hls.js playback, Socket.IO nickname chat, live/offline status, likes and connected-tab count. It includes tests, Windows startup and Azure Docker/SSH deployment. See [verification](course/VERIFICATION.md) for evidence and remaining deployment/device checks. The earlier prototypes below remain available.
+
 An original, web-first live-streaming prototype inspired by [Pure Live](https://github.com/liuchuancong/pure_live). Unlike Pure Live's third-party stream viewer, this project lets a user start their own broadcast. No Pure Live source code is copied into this repository.
 
 ## Run locally

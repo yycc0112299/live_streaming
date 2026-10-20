@@ -87,7 +87,7 @@ function App() {
   }
   async function share() {
     try { await navigator.clipboard.writeText(location.href); setNotice('觀看連結已複製'); }
-    catch { setNotice(`觀看連結：${location.href}`); }
+    catch { setNotice(`無法自動複製，請手動複製：${location.href}`); }
   }
   return <>
     <header className="topbar"><a href={base} className="brand"><span className="brand-icon">◉</span> CLOUD<span>LIVE</span><small>GROUP 09</small></a><span className="course-tag">電子工程總整課程 · NTUST</span><span className={`connection ${connected ? 'online' : ''}`}>{connected ? '已連線' : '重新連線中…'}</span></header>
@@ -110,7 +110,7 @@ function App() {
           {error && <p className="error" role="alert">{error}</p>}
         </div>
       </aside></div>
-      {notice && <p className="notice" role="status">{notice}</p>}
+      {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="關閉分享提示" onClick={() => setNotice('')}>×</button></div>}
       <footer><span>GROUP 09 / CLOUD-BASED LIVE STREAMING PLATFORM</span><span>連線數依分頁計算 · 聊天僅暫存最近 100 則 · 重啟後清除</span></footer>
     </main>
   </>;

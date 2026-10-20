@@ -53,3 +53,9 @@
 因此 `deploy/mediamtx.yml` 使用 Low-Latency HLS 與 200 ms parts，播放器啟用 hls.js `lowLatencyMode`。本機測得約減少 1.1 秒，但尚未達到低於 1 秒；不能把「以毫秒為單位量測」當成「毫秒級低延遲」。
 
 Azure `Capstone/B11302133` 曾啟動並確認 Running、網站健康端點可連；此機到 VM 的 SSH 登入未通過，公開 RTMP 1935 也不通。既有架構需經 SSH tunnel 才能從本機 OBS 發送至 VM，因此本次沒有完成 Azure OBS 實播或遠端延遲量測，亦未將新設定部署到 VM。測試後已停 OBS 推流、退出 OBS、停止本機 MediaMTX／網站；Azure Portal 已讀回 `Stopped (deallocated)`。解除配置停止 VM 運算計費，但儲存與網路資源可能仍計費。
+
+### 2026-10-21 再測
+
+- 同一台電腦的內建 `USB2.0 HD UVC WebCam` 這次在 Chrome 直播播放器中顯示清楚的人像，螢幕畫面亦同步可見。前次攝影機黑畫面並非持續故障；未確認它恢復的確切原因。麥克風仍只確認 OBS 電平及 MediaMTX 接收 AAC，未做獨立聽音。
+- 暫時把 HLS segment 改為 600 ms，OBS 實際輸出約 600 ms GOP，維持 200 ms part。八張相隔約 0.9 秒的 Chrome 截圖量得 1256–1312 ms、平均 1277 ms。相較 1 秒 segment 的 1299 ms，改善約 22 ms，低於這套截圖方法的可靠辨識幅度，因此不採用此實驗設定；OBS 與私人 MediaMTX 設定已恢復。
+- 使用者指定的 Google Chrome 可以自動登入 Azure Portal；在 Bastion 輸入既有 VM 使用者名稱後，Chrome **沒有**自動填入 VM 密碼。免費 Bastion Developer 仍需 VM 密碼或既有 SSH 私鑰，且瀏覽器內的 Bastion 連線不能直接提供本機 OBS 所需的 SSH tunnel。VM 保持 `Stopped (deallocated)`，未因此建立 Bastion 資源或開放新的入站埠。

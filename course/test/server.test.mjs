@@ -14,6 +14,7 @@ async function setup(t) {
       return res.end(JSON.stringify({ ready }));
     }
     if (req.url === '/live/index.m3u8') return res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' }).end('#EXTM3U\nsegment.ts\n');
+    if (req.url === '/live/part.mp4?_HLS_msn=1') return res.writeHead(200, { 'Content-Type': 'video/mp4' }).end('part');
     res.writeHead(404).end();
   });
   upstream.listen(0, '127.0.0.1');
@@ -52,6 +53,9 @@ test('HLS playlist is proxied but arbitrary files and upstreams are inaccessible
   const playlist = await fetch(url + '/hls/live/index.m3u8');
   assert.equal(playlist.status, 200);
   assert.match(await playlist.text(), /#EXTM3U/);
+  const part = await fetch(url + '/hls/live/part.mp4?_HLS_msn=1');
+  assert.equal(part.status, 200);
+  assert.equal(await part.text(), 'part');
   for (const path of ['/server.mjs', '/.env', '/hls/other/index.m3u8', '/hls/live/http:evil', '/%2e%2e/package.json']) assert.equal((await fetch(url + path)).status, 404);
   assert.equal((await fetch(url, { method: 'POST' })).status, 405);
 });

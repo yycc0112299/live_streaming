@@ -37,3 +37,19 @@
 - 主播 RTMP 1935、MediaMTX API 9997、內部 HLS 8888 保持 loopback，OBS 使用 SSH tunnel。現有 SSH 私鑰／密碼不在此工作環境中，因此未冒稱已從這台電腦完成 SSH 主播推流。
 - VM 為 Running 才提供服務並產生運算費用；deallocate 後網站離線，systemd 服務會在下次開機恢復。
 - 不包含簡報未承諾的帳號、錄影、金流、FPGA 或雙鏡頭辨識整合。
+
+## 2026-10-21 OBS 延遲實測
+
+以 OBS `Group9 Demo` 的攝影機、Realtek 麥克風及螢幕來源推流至本機 RTMP，再經 MediaMTX、HLS、課程網站及 Chrome 播放。MediaMTX 確認收到 H.264/AAC 雙軌；OBS 麥克風電平有反應，但本次沒有獨立聽音驗收。攝影機已偵測且有 1280×720 來源尺寸，預覽區卻接近全黑，因此不能宣稱鏡頭影像驗收通過。螢幕畫面可播放。
+
+延遲量測是在 OBS 暫時加入毫秒時鐘來源，對照 Chrome 觀眾端截圖的時鐘與截圖時間。均為同一台電腦、本機網路、8 張以內的短時測試，約有一個畫面影格與截圖時序誤差；不代表跨網路 Azure 觀眾端延遲。
+
+| 設定 | 截圖數 | 端到端畫面延遲 | 結果 |
+| --- | ---: | ---: | --- |
+| 原有 MPEG-TS HLS、1 秒 segment | 6 | 約 2387–2411 ms，平均約 2400 ms | 基準 |
+| Low-Latency HLS、200 ms part、1 秒 segment | 8 | 約 1285–1338 ms，平均 1299 ms | 保留此設定 |
+| Low-Latency HLS、100 ms part、1 秒 segment | 8 | 約 1306–1360 ms，平均 1337 ms | 無改善，且 MediaMTX 警告 part duration 變動可能使 iOS 出錯 |
+
+因此 `deploy/mediamtx.yml` 使用 Low-Latency HLS 與 200 ms parts，播放器啟用 hls.js `lowLatencyMode`。本機測得約減少 1.1 秒，但尚未達到低於 1 秒；不能把「以毫秒為單位量測」當成「毫秒級低延遲」。
+
+Azure `Capstone/B11302133` 曾啟動並確認 Running、網站健康端點可連；此機到 VM 的 SSH 登入未通過，公開 RTMP 1935 也不通。既有架構需經 SSH tunnel 才能從本機 OBS 發送至 VM，因此本次沒有完成 Azure OBS 實播或遠端延遲量測，亦未將新設定部署到 VM。測試後已停 OBS 推流、退出 OBS、停止本機 MediaMTX／網站；Azure Portal 已讀回 `Stopped (deallocated)`。解除配置停止 VM 運算計費，但儲存與網路資源可能仍計費。

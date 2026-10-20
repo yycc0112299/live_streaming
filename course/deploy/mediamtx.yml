@@ -8,8 +8,9 @@ rtmpAddress: :1935
 hls: true
 hlsAddress: :8888
 hlsAlwaysRemux: true
-hlsVariant: mpegts
+hlsVariant: lowLatency
 hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
 api: true
 apiAddress: :9997
 authMethod: internal

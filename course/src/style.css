@@ -247,6 +247,11 @@ video {
 }
 .support-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; color:var(--muted); font-size:13px; }
 .support-bar button { padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--ink); }
+.stream-overlay { position:absolute; left:18px; right:18px; bottom:52px; z-index:3; display:flex; flex-direction:column; gap:4px; padding:12px 16px; border-radius:14px; color:#fff; background:linear-gradient(90deg,rgba(16,19,35,.92),rgba(77,40,115,.8)); box-shadow:0 8px 24px #0006; animation:overlay-in .2s ease-out; pointer-events:none; }
+.stream-overlay strong { font-size:14px; }
+.stream-overlay span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:16px; }
+.stream-overlay.donation { background:linear-gradient(90deg,#a63872eF,#e48435eF); }
+@keyframes overlay-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
 .stream-actions b {
   color:#e8edf7
 }

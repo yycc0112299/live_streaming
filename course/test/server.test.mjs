@@ -122,6 +122,14 @@ test('demo points allow only fixed donations and reject overspending', async (t)
   assert.ok((await emit(a, 'donate', 2)).error);
   assert.ok((await emit(a, 'donate', 100)).error);
 });
+test('donations broadcast the sender nickname and amount', async (t) => {
+  const { url } = await setup(t);
+  const a = await client(t, url); const b = await client(t, url);
+  await emit(a, 'nickname', 'Alice');
+  const received = once(b, 'donation');
+  await emit(a, 'donate', 10);
+  assert.deepEqual(await received, [{ amount: 10, nickname: 'Alice' }]);
+});
 test('foreign browser origins cannot create a chat connection', async (t) => {
   const { url } = await setup(t);
   const socket = connect(url, { transports: ['websocket'], reconnection: false, extraHeaders: { Origin: 'https://other.example' } });

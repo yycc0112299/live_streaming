@@ -151,7 +151,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       if (![1, 5, 10].includes(amount)) return acknowledge(ack, { error: '應援點數只能選 1、5 或 10。' });
       if (points < amount) return acknowledge(ack, { error: '應援點數不足。' });
       points -= amount; supportTotal += amount;
-      io.emit('state', snapshot()); socket.emit('wallet', { points });
+      io.emit('state', snapshot()); io.emit('donation', { amount, nickname: nickname || '觀眾' }); socket.emit('wallet', { points });
       acknowledge(ack, { ok: true, points, supportTotal });
     });
     socket.on('disconnect', broadcast);

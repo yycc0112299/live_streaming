@@ -65,6 +65,7 @@ function App() {
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState({ live: false, available: false, viewers: 0, likes: 0 });
   const [points, setPoints] = useState(0);
+  const [overlay, setOverlay] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draftName, setDraftName] = useState(() => { try { return localStorage.getItem('group9-nickname') || ''; } catch { return ''; } });
   const [nickname, setNickname] = useState('');
@@ -77,12 +78,28 @@ function App() {
   useEffect(() => {
     const onConnect = () => { setConnected(true); setNickname(''); setError(''); };
     const onDisconnect = () => { setConnected(false); setNickname(''); };
-    const onMessage = (message) => setMessages((items) => [...items, message].slice(-100));
+    const onMessage = (message) => {
+      setMessages((items) => [...items, message].slice(-100));
+      setOverlay({ type: 'chat', ...message });
+      window.clearTimeout(window.__group9OverlayTimer);
+      window.__group9OverlayTimer = window.setTimeout(() => setOverlay(null), 6000);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const speech = new SpeechSynthesisUtterance(message.text.slice(0, 120));
+        speech.lang = 'zh-TW'; speech.rate = 1.05; speech.volume = 0.9;
+        window.speechSynthesis.speak(speech);
+      }
+    };
+    const onDonation = ({ amount, nickname }) => {
+      setOverlay({ type: 'donation', amount, nickname });
+      window.clearTimeout(window.__group9OverlayTimer);
+      window.__group9OverlayTimer = window.setTimeout(() => setOverlay(null), 5000);
+    };
     const onLike = ({ likes }) => { setState((value) => ({ ...value, likes })); setHeart((n) => n + 1); };
-    socket.on('connect', onConnect).on('disconnect', onDisconnect).on('state', setState).on('wallet', ({ points }) => setPoints(points)).on('history', setMessages).on('chat', onMessage).on('like', onLike);
+    socket.on('connect', onConnect).on('disconnect', onDisconnect).on('state', setState).on('wallet', ({ points }) => setPoints(points)).on('history', setMessages).on('chat', onMessage).on('donation', onDonation).on('like', onLike);
     socket.on('connect_error', onDisconnect);
     socket.connect();
-    return () => { socket.removeAllListeners(); socket.disconnect(); };
+    return () => { socket.removeAllListeners(); socket.disconnect(); window.speechSynthesis?.cancel(); window.clearTimeout(window.__group9OverlayTimer); };
   }, []);
   useEffect(() => { if (chat.current) chat.current.scrollTop = chat.current.scrollHeight; }, [messages]);
   function nameSubmit(event) {
@@ -116,7 +133,7 @@ function App() {
       <div className="eyebrow">ONE ROOM. SHARED MOMENTS.</div>
       <div className="heading"><div><h1>讓每個瞬間，<em>即時相聚。</em></h1><p>一場直播，一個聊天室。打開瀏覽器，就在現場。</p></div><button className="share" onClick={share}>↗ 分享直播間</button></div>
       <div className="room-grid"><section className="broadcast" aria-label="直播間">
-        <div className="video-wrap"><Player live={connected && state.live}/><span className={`live-badge ${state.live && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
+        <div className="video-wrap"><Player live={connected && state.live}/>{overlay && <div className={`stream-overlay ${overlay.type}`} role="status">{overlay.type === 'donation' ? <><strong>🎁 {overlay.nickname} 應援 {overlay.amount} 點</strong><span>謝謝支持！</span></> : <><strong>{overlay.nickname}</strong><span>{overlay.text}</span></>}</div>}<span className={`live-badge ${state.live && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
         <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 影音直播</span></div>
         <div className="support-bar" aria-label="示範應援"><span>示範點數：<b>{points}</b> · 本場應援：<b>{state.supportTotal || 0}</b></span>{[1, 5, 10].map((amount) => <button key={amount} disabled={!connected || points < amount} onClick={() => donate(amount)}>應援 {amount}</button>)}</div>

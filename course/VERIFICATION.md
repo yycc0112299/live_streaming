@@ -8,7 +8,7 @@
 - 課程版 `npm run build` 成功；hls.js 的 bundle 大小會產生 Vite 提醒，不影響建置。
 - `npm audit`：正式與開發依賴都回報 0 vulnerabilities（查核當下）。
 - 官方 MediaMTX 1.21.2 Windows binary，官方 SHA-256 比對一致，私人設定檔通過 `--validate-conf`。
-- 實際合成 1280×720 / 30 FPS H.264 + 48kHz AAC → RTMP → MediaMTX → HLS → 兩個獨立 FFmpeg 影音解碼器；各解碼 90 影格。
+- 實際合成 1280×720 / 60 FPS H.264 + 48kHz AAC → RTMP → MediaMTX → HLS → 兩個獨立 FFmpeg 影音解碼器；主播放清單也必須標示 `FRAME-RATE=60.000`。
 - Chrome `videoWidth=1280`、`videoHeight=720`、`readyState=4`、`paused=false`，播放時間持續前進。
 - 兩個 Chrome 分頁設不同暱稱並互傳訊息，按讚數同步；新分頁可見最近歷史。
 - 手機尺寸覆寫 390px：文件內容寬度 375px，無橫向溢出；畫面存於 `evidence/mobile-offline.png`。這是桌面瀏覽器尺寸模擬，不是真實手機。
@@ -52,10 +52,18 @@
 
 因此 `deploy/mediamtx.yml` 使用 Low-Latency HLS 與 200 ms parts，播放器啟用 hls.js `lowLatencyMode`。本機測得約減少 1.1 秒，但尚未達到低於 1 秒；不能把「以毫秒為單位量測」當成「毫秒級低延遲」。
 
-Azure `Capstone/B11302133` 曾啟動並確認 Running、網站健康端點可連；此機到 VM 的 SSH 登入未通過，公開 RTMP 1935 也不通。既有架構需經 SSH tunnel 才能從本機 OBS 發送至 VM，因此本次沒有完成 Azure OBS 實播或遠端延遲量測，亦未將新設定部署到 VM。測試後已停 OBS 推流、退出 OBS、停止本機 MediaMTX／網站；Azure Portal 已讀回 `Stopped (deallocated)`。解除配置停止 VM 運算計費，但儲存與網路資源可能仍計費。
+上述紀錄是第一次測試的結果；後續已透過受限、限時的 SSH tunnel 完成 Azure OBS 實播與遠端延遲量測，結果記錄於下方。每次測試結束仍須停止 OBS、移除臨時金鑰，並在 Azure Portal 讀回 `Stopped (deallocated)`；解除配置停止 VM 運算計費，但儲存與網路資源可能仍計費。
 
 ### 2026-10-21 再測
 
 - 同一台電腦的內建 `USB2.0 HD UVC WebCam` 這次在 Chrome 直播播放器中顯示清楚的人像，螢幕畫面亦同步可見。前次攝影機黑畫面並非持續故障；未確認它恢復的確切原因。麥克風仍只確認 OBS 電平及 MediaMTX 接收 AAC，未做獨立聽音。
 - 暫時把 HLS segment 改為 600 ms，OBS 實際輸出約 600 ms GOP，維持 200 ms part。八張相隔約 0.9 秒的 Chrome 截圖量得 1256–1312 ms、平均 1277 ms。相較 1 秒 segment 的 1299 ms，改善約 22 ms，低於這套截圖方法的可靠辨識幅度，因此不採用此實驗設定；OBS 與私人 MediaMTX 設定已恢復。
 - 使用者指定的 Google Chrome 可以自動登入 Azure Portal；在 Bastion 輸入既有 VM 使用者名稱後，Chrome **沒有**自動填入 VM 密碼。免費 Bastion Developer 仍需 VM 密碼或既有 SSH 私鑰，且瀏覽器內的 Bastion 連線不能直接提供本機 OBS 所需的 SSH tunnel。VM 保持 `Stopped (deallocated)`，未因此建立 Bastion 資源或開放新的入站埠。
+
+### 2026-10-21 Azure OBS 60 FPS 實播
+
+- 經使用者核准的限時、只允許轉送 VM loopback `1935` 的 SSH 公鑰建立 tunnel；RTMP、MediaMTX API 與內部 HLS 沒有改成公開入站。
+- OBS 使用內建 `USB2.0 HD UVC WebCam`、Realtek 麥克風及螢幕來源，輸出 1280×720 / 60 FPS H.264、AAC。MediaMTX 的公開 HLS master playlist 讀回 `FRAME-RATE=60.000`。
+- Azure VM 已部署 `lowLatency` HLS、1 秒 segment、200 ms part。播放器以 hls.js 的正式低延遲設定把目標延遲設為 0.8 秒、最大延遲設為 1.5 秒，最多以 1.5 倍速追趕。Chrome 新開前景分頁的端到端畫面樣本曾達 832、912、958 ms；分頁失去前景後則可增加到數秒，因此不能承諾所有情況都低於 1 秒，也不能把單一最佳樣本當成穩定延遲。
+- 2500 Kbps 曾出現 `outputCongestion=1` 與大量跳幀；1000 Kbps 短測正常，但約 3 分鐘後累積 1411 個跳幀。降至 700 Kbps 後連續 1 分 55 秒仍為 `outputCongestion=0`、`outputSkippedFrames=0`，因此採用 700 Kbps 作為這條校外網路的展示預設值。曾測試強制跳轉播放位置與 500 ms 追趕門檻，但會造成黑畫面或停滯，最終未保留。
+- 最終清理已讀回：OBS 推流 `outputActive=false`、本機 1935 tunnel 無監聽、OBS 程序已退出、VM 內臨時金鑰 `temporary_key_count=0`，Azure Portal 狀態為 `Stopped (deallocated)`。

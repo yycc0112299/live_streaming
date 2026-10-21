@@ -25,7 +25,12 @@ function Player({ live }) {
     };
     element.addEventListener('error', failed);
     if (Hls.isSupported()) {
-      hls = new Hls({ lowLatencyMode: true, maxLiveSyncPlaybackRate: 1.1 });
+      hls = new Hls({
+        lowLatencyMode: true,
+        liveSyncDuration: 0.8,
+        liveMaxLatencyDuration: 1.5,
+        maxLiveSyncPlaybackRate: 1.5,
+      });
       hls.loadSource(source);
       hls.attachMedia(element);
       hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) failed(); });

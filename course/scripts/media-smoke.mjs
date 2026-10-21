@@ -27,7 +27,7 @@ async function waitFor(predicate, timeout = 20000) {
 }
 const state = async () => (await fetch(origin + '/api/status')).json();
 assert.equal((await state()).live, false, 'Stop the existing broadcast before running this check');
-const publisher = run(['-re', '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', '30', '-b:v', '2500k', '-c:a', 'aac', '-b:a', '128k', '-f', 'flv', `rtmp://127.0.0.1:1935/live?user=broadcaster&pass=${password}`]);
+const publisher = run(['-re', '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=60', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', '60', '-b:v', '700k', '-c:a', 'aac', '-b:a', '128k', '-f', 'flv', `rtmp://127.0.0.1:1935/live?user=broadcaster&pass=${password}`]);
 const readers = [];
 try {
   await waitFor(async () => (await state()).live);
@@ -35,6 +35,7 @@ try {
     const r = await fetch(origin + '/hls/live/index.m3u8');
     return r.ok && (await r.text()).includes('#EXTM3U');
   });
+  assert.match(await (await fetch(origin + '/hls/live/index.m3u8')).text(), /FRAME-RATE=60\.000/, 'HLS master playlist must advertise 60 FPS');
   console.log('RTMP publisher live; HLS playlist available. Decoding with two independent viewers.');
   for (let i = 0; i < 2; i++) readers.push(run(['-i', origin + '/hls/live/index.m3u8', '-t', '3', '-map', '0:v:0', '-map', '0:a:0', '-progress', 'pipe:1', '-f', 'null', '-']));
   const results = await Promise.race([
@@ -44,7 +45,7 @@ try {
   const frames = results.map((result) => {
     assert.equal(result.code, 0, 'Both audio/video tracks must decode');
     const count = Math.max(...[...result.output.matchAll(/frame=(\d+)/g)].map((m) => Number(m[1])));
-    assert.ok(count >= 60, 'Expected at least 60 decoded video frames');
+    assert.ok(count >= 120, 'Expected at least 120 decoded video frames from the 60 FPS stream');
     return count;
   });
   console.log(`Two audio/video decode checks passed: ${frames.join(', ')} frames.`);
@@ -53,7 +54,7 @@ try {
   publisher.stdin.write('q');
   await publisher.done;
   await waitFor(async () => !(await state()).live);
-  const report = { at: new Date().toISOString(), source: 'synthetic 720p30 H.264 + 48kHz AAC', liveStatus: true, hlsPlaylist: true, independentAudioVideoDecoders: 2, frames, offlineAfterStop: true, realOBS: false, azure: process.env.TEST_ENVIRONMENT === 'azure-vm' };
+  const report = { at: new Date().toISOString(), source: 'synthetic 720p60 H.264 + 48kHz AAC', liveStatus: true, hlsPlaylist: true, independentAudioVideoDecoders: 2, frames, offlineAfterStop: true, realOBS: false, azure: process.env.TEST_ENVIRONMENT === 'azure-vm' };
   await writeFile(new URL('../.runtime/media-smoke.json', import.meta.url), JSON.stringify(report, null, 2));
   console.log('MEDIA_SMOKE_PASS: live, HLS, two A/V decoders, offline after stop. Evidence: .runtime/media-smoke.json');
 } finally {

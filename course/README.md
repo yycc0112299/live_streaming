@@ -30,7 +30,7 @@ powershell -File scripts/start.ps1
 
 開啟 <http://127.0.0.1:4180/>。啟動腳本會建置前端、檢查連接埠、啟動 MediaMTX 與 Node；Ctrl+C 一起停止。若連接埠被占用會停止啟動，不會殺掉既有服務。
 
-OBS 的 **Settings → Stream → Custom**：從本機 `.runtime/OBS-PRIVATE.txt` 讀取 Server 與 Stream key，勿上傳該檔案。輸出設定 H.264、1280×720、30 FPS、CBR 2500 Kbps、keyframe 1 秒、AAC 48 kHz / 128 Kbps。加入畫面與音訊來源，點 Start Streaming。網頁應在約 2 秒內顯示 LIVE，影片需再等待 HLS 緩衝；這不是低延遲 WebRTC。播放預設靜音，手動打開音量。
+OBS 的 **Settings → Stream → Custom**：從本機 `.runtime/OBS-PRIVATE.txt` 讀取 Server 與 Stream key，勿上傳該檔案。輸出設定 H.264、1280×720、60 FPS、CBR 700 Kbps、keyframe 1 秒、AAC 48 kHz / 128 Kbps。加入畫面與音訊來源，點 Start Streaming。700 Kbps 是本次從校外網路推送 Azure VM，連續 1 分 55 秒仍零壅塞、零跳幀的實測值；若換網路再依畫質逐步提高。網頁應在約 2 秒內顯示 LIVE，影片需再等待 HLS 緩衝；這不是低延遲 WebRTC。播放預設靜音，手動打開音量。
 
 安裝腳本固定 MediaMTX 1.21.2，並核對官方 SHA-256。生成的 256-bit 主播密碼只寫入忽略的私人檔案，重跑不覆寫。若重新產生密碼，OBS 也須更新。
 
@@ -43,6 +43,8 @@ OBS 的 **Settings → Stream → Custom**：從本機 `.runtime/OBS-PRIVATE.txt
 原生安裝器是 `deploy/install-native.sh`。將非秘密的課程來源放到 `/opt/group9-live/releases/<commit>/course`，以 root 執行該腳本即可安裝／測試／建置並設定自動啟動；它不改 VM 的全域 Node 版本。舊版與新版 release 可並存，私人設定保留。若要保留 Apache 的根目錄網站，使用 `APP_BASE=/group9/ npm run build`，並啟用 `deploy/apache-group9.conf`。開啟此路徑前先執行 `apache2ctl configtest`，再 reload；不要覆寫既有站台設定。
 
 目前觀看入口與即時驗收結果見 `VERIFICATION.md`。Apache 子路徑模式只公開課程網頁、HLS 與聊天室，MediaMTX 控制 API 與 RTMP 仍只接受 loopback；主播繼續走 SSH tunnel。原生模式的直播密碼位於 VM `/opt/group9-live/shared/OBS-PRIVATE.txt`，僅限管理者與服務帳號讀取，不放入網頁、GitHub 或講稿。
+
+Azure VM 關機延誤的檢討與下次排查順序見 [關機復原步驟](../docs/AZURE_VM_SHUTDOWN_RECOVERY.md)。
 
 ```sh
 sudo systemctl status group9-web group9-media

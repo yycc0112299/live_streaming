@@ -96,3 +96,11 @@
 - 先前記錄的 0.1–0.3 秒只代表同機 WebRTC／局部傳輸量測，不代表課程網站的完整端到端延遲，也不能用來宣稱跨網路已達毫秒級。
 - 課程展示目前仍以 OBS → RTMP → MediaMTX → HLS 播放為主；HLS 播放器的片段與緩衝會使端到端延遲落在秒級。只有確認觀看端走 WebRTC，才可比較 0.1–0.3 秒目標。
 - 排查與啟停流程已整理於 [延遲排查SOP.md](../延遲排查SOP.md)。
+
+### 2026-10-21 延遲約 2 秒的根因定位
+
+- 課程網站目前的正式建置沒有設定 `VITE_WEBRTC=true`，因此 `course/src/main.jsx` 的 `useWebRTC` 為 `false`，播放器走 `hls.js`。
+- Azure/課程版 MediaMTX 部署設定 `course/deploy/mediamtx.yml` 使用 `hls: true`、`hlsVariant: lowLatency`、`hlsSegmentDuration: 1s`、`hlsPartDuration: 200ms`；這仍是 HLS，只是低延遲 HLS，不是 WebRTC。
+- `hls.js` 雖設定 `liveSyncDuration: 0.8` 與 `liveMaxLatencyDuration: 1.5`，但 HLS 播放器仍要等待 playlist、segment/part、HTTP 代理與瀏覽器播放緩衝，所以實際端到端接近 2 秒是目前架構的預期結果。
+- `course/scripts/configure.mjs` 的 `--webrtc` 只產生 loopback 的本機試驗設定；正式部署設定仍將 `webrtc` 關閉。故先前同機 WebRTC 的 0.1–0.3 秒不能代表目前 Azure 公開網站。
+- 結論：目前主要問題不是 OBS 編碼速度，而是公開觀看端仍使用 HLS。若要把端到端延遲壓到數百毫秒，必須把 Azure 的觀看鏈路切換成可跨網路的 WebRTC/WHEP，並配置 HTTPS、ICE/UDP 或 TURN，再重新做跨裝置量測。

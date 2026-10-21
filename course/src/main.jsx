@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Hls from 'hls.js';
+import MediaMTXWebRTCReader from './vendor/mediamtx-reader.js';
 import { io } from 'socket.io-client';
 import './style.css';
 
 const base = import.meta.env.BASE_URL;
+const useWebRTC = import.meta.env.VITE_WEBRTC === 'true';
 const socket = io({ autoConnect: false, path: `${base}socket.io` });
 
 function Player({ live }) {
@@ -24,7 +26,15 @@ function Player({ live }) {
       retryTimer = setTimeout(() => retry((n) => n + 1), 5000);
     };
     element.addEventListener('error', failed);
-    if (Hls.isSupported()) {
+    if (useWebRTC) {
+      // Official MediaMTX v1.21.2 WHEP reader owns negotiation and reconnects.
+      const reader = new MediaMTXWebRTCReader({
+        url: new URL(`${base}webrtc/live/whep`, location.href).href,
+        onError: () => setError('影片連線中斷，正在重試。'),
+        onTrack: (event) => { setError(''); element.srcObject = event.streams[0]; },
+      });
+      return () => { reader.close(); element.removeEventListener('error', failed); clearTimeout(retryTimer); element.srcObject = null; };
+    } else if (Hls.isSupported()) {
       hls = new Hls({
         lowLatencyMode: true,
         liveSyncDuration: 0.8,
@@ -102,8 +112,8 @@ function App() {
       <div className="room-grid"><section className="broadcast" aria-label="直播間">
         <div className="video-wrap"><Player live={connected && state.live}/><span className={`live-badge ${state.live && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
-        <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">HLS · 影音直播</span></div>
-        <div className="play-hint">播放預設靜音，點播放器音量鍵即可開啟聲音。HLS 影音會比即時聊天稍晚。</div>
+        <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 影音直播</span></div>
+        <div className="play-hint">播放預設靜音，點播放器音量鍵即可開啟聲音。{!useWebRTC && 'HLS 影音會比即時聊天稍晚。'}</div>
       </section>
       <aside className="chat-panel" aria-label="即時聊天室"><div className="chat-heading"><h2>即時聊天室 <span>LIVE CHAT</span></h2><span className="chat-dot"/></div>
         <div className="chat-welcome"><strong>歡迎來到 Group 9 👋</strong><p>選個暱稱，和正在觀看的朋友聊聊。請友善交流，勿分享私人資訊。</p></div>

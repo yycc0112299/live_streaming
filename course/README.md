@@ -19,6 +19,18 @@
 
 ## Windows 本機啟動
 
+### WebRTC 低延遲對照（2026-10-21）
+
+已接入 [MediaMTX v1.21.2 官方 WHEP reader](https://github.com/bluenviron/mediamtx/blob/v1.21.2/internal/servers/webrtc/reader.js)，原始碼與 MIT 授權保留於 `src/vendor/`。不重寫協定。停止既有本機直播服務後，可用：
+
+```powershell
+powershell -File scripts/start.ps1 -WebRTC
+```
+
+這會產生獨立的 `.runtime/mediamtx.webrtc.yml`，保留原 HLS 私人設定與主播驗證，WebRTC HTTP 8889 與 UDP 8189 只綁定 loopback。OBS 依[官方 WHIP 方法](https://mediamtx.org/docs/publish/obs-studio)選 Service `WHIP`、Server `http://127.0.0.1:8889/live/whip`；Bearer Token 使用 `broadcaster:` 加上原本私人設定的主播密碼，勿放進網頁或 Git。OBS WHIP 使用 H.264（無 B-frame）與 Opus。啟動後開 `http://127.0.0.1:4180/`，標籤應顯示 WebRTC。
+
+不加 `-WebRTC` 則建置原 HLS 播放器，OBS 也須切回原本 RTMP/AAC 設定。建置時 `VITE_WEBRTC=true` 才會啟用 WebRTC；Node 的 `MEDIAMTX_WEBRTC_URL` 預設為 `http://127.0.0.1:8889`。伺服器只代理單一直播路徑的觀眾 WHEP，不公開 WHIP 發布端點。此模式尚未完成 Azure／不同網路驗收，不能直接用 loopback 設定部署公網；官方跨網路設定見 [WebRTC connectivity](https://mediamtx.org/docs/features/webrtc-specific-features)。
+
 需求：Node.js 22.18+、PowerShell、OBS。第一次在 `course/` 執行：
 
 ```powershell

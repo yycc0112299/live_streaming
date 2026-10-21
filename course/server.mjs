@@ -10,7 +10,7 @@ import { Server } from 'socket.io';
 const dist = fileURLToPath(new URL('./dist/', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
-export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', pollMs = 2000 } = {}) {
+export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000 } = {}) {
   // shortcut: room state lives in one process; use shared storage before running multiple replicas.
   const history = [];
   let likes = 0;
@@ -21,9 +21,39 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     res.setHeader('Referrer-Policy', 'same-origin');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ws: wss:; media-src 'self' blob:; worker-src 'self' blob:; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'");
     res.setHeader('Cache-Control', 'no-store');
-    if (req.method !== 'GET' && req.method !== 'HEAD') return res.writeHead(405).end();
     try {
       const url = new URL(req.url, 'http://localhost');
+      if (url.pathname.startsWith('/webrtc/')) {
+        // Only viewer WHEP endpoints; never proxy WHIP publishing or arbitrary paths.
+        if (!/^\/webrtc\/live\/whep(?:\/[a-f0-9-]{36})?$/.test(url.pathname)) return res.writeHead(404).end();
+        if (!['OPTIONS', 'POST', 'PATCH', 'DELETE'].includes(req.method)) return res.writeHead(405).end();
+        if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return res.writeHead(403).end();
+        const chunks = [];
+        let size = 0;
+        for await (const chunk of req) {
+          size += chunk.length;
+          if (size > 65536) return res.writeHead(413).end();
+          chunks.push(chunk);
+        }
+        const upstream = await fetch(`${webrtcUrl}${url.pathname.slice(7)}`, {
+          method: req.method,
+          headers: { 'Content-Type': req.headers['content-type'] || 'application/sdp', ...(req.headers['if-match'] ? { 'If-Match': req.headers['if-match'] } : {}) },
+          body: size ? Buffer.concat(chunks) : undefined,
+          signal: AbortSignal.timeout(15000),
+          redirect: 'error',
+        });
+        const headers = {};
+        for (const name of ['content-type', 'etag', 'accept-patch', 'link']) if (upstream.headers.has(name)) headers[name] = upstream.headers.get(name);
+        const session = upstream.headers.get('location');
+        if (session) {
+          const path = new URL(session, `${webrtcUrl}/live/whep`).pathname;
+          if (!/^\/live\/whep\/[a-f0-9-]{36}$/.test(path)) throw new Error('Invalid WHEP session');
+          headers.location = `./whep/${path.split('/').pop()}`;
+        }
+        res.writeHead(upstream.status, headers).end(Buffer.from(await upstream.arrayBuffer()));
+        return;
+      }
+      if (req.method !== 'GET' && req.method !== 'HEAD') return res.writeHead(405).end();
       if (url.pathname === '/api/status' || url.pathname === '/health') {
         return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ ...snapshot(), status: 'ok' }));
       }

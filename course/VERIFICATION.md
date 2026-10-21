@@ -66,4 +66,26 @@
 - OBS 使用內建 `USB2.0 HD UVC WebCam`、Realtek 麥克風及螢幕來源，輸出 1280×720 / 60 FPS H.264、AAC。MediaMTX 的公開 HLS master playlist 讀回 `FRAME-RATE=60.000`。
 - Azure VM 已部署 `lowLatency` HLS、1 秒 segment、200 ms part。播放器以 hls.js 的正式低延遲設定把目標延遲設為 0.8 秒、最大延遲設為 1.5 秒，最多以 1.5 倍速追趕。Chrome 新開前景分頁的端到端畫面樣本曾達 832、912、958 ms；分頁失去前景後則可增加到數秒，因此不能承諾所有情況都低於 1 秒，也不能把單一最佳樣本當成穩定延遲。
 - 2500 Kbps 曾出現 `outputCongestion=1` 與大量跳幀；1000 Kbps 短測正常，但約 3 分鐘後累積 1411 個跳幀。降至 700 Kbps 後連續 1 分 55 秒仍為 `outputCongestion=0`、`outputSkippedFrames=0`，因此採用 700 Kbps 作為這條校外網路的展示預設值。曾測試強制跳轉播放位置與 500 ms 追趕門檻，但會造成黑畫面或停滯，最終未保留。
+
+### 2026-10-21 17:00–17:10 官方 WebRTC 方法本機對照
+
+- 方法來源：MediaMTX 官方 [OBS WHIP](https://mediamtx.org/docs/publish/obs-studio)、[WebRTC](https://mediamtx.org/docs/read/webrtc)、[Bearer 認證](https://mediamtx.org/docs/features/authentication)，以及 v1.21.2 開源 `reader.js`。課程網站直接使用原 reader，僅增加 ES module export，MIT 授權與來源已保留。
+- 先使用同一個 OBS RTMP/H.264/AAC 來源，同時由原課程 HLS 播放器及 MediaMTX 原生 WebRTC 網頁觀看。HLS 時鐘落後約 1.59–1.65 秒，WebRTC 約 0.07–0.17 秒；這時 WebRTC 明確跳過 AAC，只有畫面，不能當完整影音成功。
+- 再依官方方法改 OBS WHIP，Bearer 使用原主播帳密，沒有移除驗證。MediaMTX 日誌確認發布及讀取均為 H.264＋Opus 雙軌。課程網站已透過自己的 WHEP proxy 使用官方 reader，Chrome 播放讀回 `1280×720`、`readyState=4`、`paused=false`。
+- 以下是毫秒時鐘的人工讀圖樣本。`before/after` 包住瀏覽器截圖呼叫，不是精密相機曝光時間；仍有影格、時鐘來源與截圖時序誤差。量的是 OBS 時鐘來源到播放器畫面，不是實體鏡頭曝光到螢幕的完整延遲。全部為同一台 Windows 電腦的 loopback，不能代表 Azure 或手機跨網路。
+
+| 路徑 | 畫面中的 Unix 毫秒 | 截圖呼叫 before–after | 相減的粗略範圍 |
+| --- | ---: | --- | --- |
+| RTMP → 官方 WebRTC 頁 | 1792573264053 | 1792573264127–1792573264225 | 74–172 ms |
+| 同來源 RTMP → 課程 HLS | 1792573262636 | 1792573264225–1792573264282 | 1589–1646 ms |
+| WHIP → 官方 WebRTC 頁 | 1792573395266 | 1792573395500–1792573395594 | 234–328 ms |
+| WHIP → 課程網站 WebRTC | 1792573525996 | 1792573526155–1792573526196 | 159–200 ms |
+| WHIP → 課程網站 WebRTC（稍後） | 1792573668809 | 1792573669065–1792573669167 | 256–358 ms |
+| WHIP → 課程網站 WebRTC（停播再開） | 1792573771908 | 1792573772081–1792573772161 | 173–253 ms |
+
+- OBS WHIP 連續運行 5 分 36 秒時，狀態為 `outputCongestion=0`、`outputSkippedFrames=0`、20161 個輸出影格。網站稍後樣本仍可播；這不是逐影格無凍結測試，也不是長期穩定度證明。獨立聽音驗收仍未完成。
+- OBS 停播後網站可見 OFFLINE；再開播後，不重新整理網站即恢復 LIVE、720p 播放。新 `scripts/start.ps1 -WebRTC` 已實際啟動成功；獨立設定通過 MediaMTX `--validate-conf`。原 HLS 與 WebRTC 兩種建置均成功。
+- `npm test` 6/6。新增測試涵蓋 WHEP OPTIONS、POST、PATCH、DELETE、session Location 重寫、64 KiB 輸入限制、外站 Origin 拒絕、禁止 WHIP 與其他路徑。
+- 結論：官方方法在本機有明顯改善，因此保留此方案；Azure 低延遲部署、真實跨網路觀看及獨立聽音尚未完成，不能標記整個目標完成。
+- 收尾：OBS 已停止，串流服務設定與時鐘來源 URL 恢復測試前值；本次啟動的本機 HTTP／MediaMTX 服務已停止、相關連接埠無 listener。Azure 曾為準備測試啟動，未部署新版本或新增權限；之後已在 Portal 讀回 `Stopped (deallocated)`。跨網路測試等待使用者明確允許限時 SSH 轉送金鑰與 WebRTC 入站規則。
 - 最終清理已讀回：OBS 推流 `outputActive=false`、本機 1935 tunnel 無監聽、OBS 程序已退出、VM 內臨時金鑰 `temporary_key_count=0`，Azure Portal 狀態為 `Stopped (deallocated)`。

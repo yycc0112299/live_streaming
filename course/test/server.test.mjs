@@ -15,12 +15,15 @@ async function setup(t) {
     }
     if (req.url === '/live/index.m3u8') return res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' }).end('#EXTM3U\nsegment.ts\n');
     if (req.url === '/live/part.mp4?_HLS_msn=1') return res.writeHead(200, { 'Content-Type': 'video/mp4' }).end('part');
+    if (req.url === '/live/whep' && req.method === 'OPTIONS') return res.writeHead(204, { 'Accept-Patch': 'application/trickle-ice-sdpfrag' }).end();
+    if (req.url === '/live/whep' && req.method === 'POST') return res.writeHead(201, { Location: '/live/whep/12345678-1234-1234-1234-123456789abc', 'Content-Type': 'application/sdp' }).end('answer');
+    if (req.url === '/live/whep/12345678-1234-1234-1234-123456789abc' && ['PATCH', 'DELETE'].includes(req.method)) return res.writeHead(204).end();
     res.writeHead(404).end();
   });
   upstream.listen(0, '127.0.0.1');
   await once(upstream, 'listening');
   const upstreamUrl = `http://127.0.0.1:${upstream.address().port}`;
-  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, pollMs: 60000 });
+  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, webrtcUrl: upstreamUrl, pollMs: 60000 });
   app.server.listen(0, '127.0.0.1');
   await once(app.server, 'listening');
   t.after(async () => { await app.close(); await new Promise((done) => upstream.close(done)); });
@@ -33,6 +36,20 @@ async function client(t, url, options = {}) {
   return socket;
 }
 function emit(socket, type, ...args) { return socket.timeout(2000).emitWithAck(type, ...args); }
+
+test('WHEP negotiation and cleanup work without exposing publishing or arbitrary upstream paths', async (t) => {
+  const { url } = await setup(t);
+  assert.equal((await fetch(url + '/webrtc/live/whep', { method: 'OPTIONS' })).status, 204);
+  const response = await fetch(url + '/webrtc/live/whep', { method: 'POST', body: 'offer' });
+  assert.equal(response.status, 201);
+  assert.equal(await response.text(), 'answer');
+  const session = new URL(response.headers.get('location'), url + '/webrtc/live/whep');
+  assert.equal(session.pathname, '/webrtc/live/whep/12345678-1234-1234-1234-123456789abc');
+  for (const method of ['PATCH', 'DELETE']) assert.equal((await fetch(session, { method })).status, 204);
+  assert.equal((await fetch(url + '/webrtc/live/whep', { method: 'POST', body: 'x'.repeat(65537) })).status, 413);
+  assert.equal((await fetch(url + '/webrtc/live/whep', { method: 'POST', headers: { Origin: 'https://foreign.example' } })).status, 403);
+  for (const path of ['/webrtc/live/whip', '/webrtc/other/whep', '/webrtc/live/whep/not-a-session']) assert.equal((await fetch(url + path, { method: 'POST' })).status, 404);
+});
 
 test('live/offline state comes from MediaMTX and distinguishes service failure', async (t) => {
   const s = await setup(t);

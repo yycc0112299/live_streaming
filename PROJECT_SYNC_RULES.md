@@ -28,3 +28,9 @@ Repository：`yycc0112299/live_streaming`
 - 正式 repository：`https://github.com/yycc0112299/live_streaming`
 - 目前同步分支：`feature/course-final`
 - 最近同步 commit：`a246223`
+
+## 專案邊界
+
+- `電子工程總整課程`／`yycc0112299/live_streaming`：只放課程直播平台，包括 OBS、RTMP、MediaMTX、HLS、WebRTC、聊天室、應援與直播部署。
+- `專題`／`yycc0112299/-`：只放人物辨識、雙鏡頭、YOLOX、ModelSim、FPGA 與相關影像處理。
+- 兩個 repository 不互相複製功能、文件或測試；若需求同時涉及兩者，分別在各自 repository 記錄。

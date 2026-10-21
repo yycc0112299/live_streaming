@@ -64,6 +64,7 @@ function Player({ live }) {
 function App() {
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState({ live: false, available: false, viewers: 0, likes: 0 });
+  const [points, setPoints] = useState(0);
   const [messages, setMessages] = useState([]);
   const [draftName, setDraftName] = useState(() => { try { return localStorage.getItem('group9-nickname') || ''; } catch { return ''; } });
   const [nickname, setNickname] = useState('');
@@ -78,7 +79,7 @@ function App() {
     const onDisconnect = () => { setConnected(false); setNickname(''); };
     const onMessage = (message) => setMessages((items) => [...items, message].slice(-100));
     const onLike = ({ likes }) => { setState((value) => ({ ...value, likes })); setHeart((n) => n + 1); };
-    socket.on('connect', onConnect).on('disconnect', onDisconnect).on('state', setState).on('history', setMessages).on('chat', onMessage).on('like', onLike);
+    socket.on('connect', onConnect).on('disconnect', onDisconnect).on('state', setState).on('wallet', ({ points }) => setPoints(points)).on('history', setMessages).on('chat', onMessage).on('like', onLike);
     socket.on('connect_error', onDisconnect);
     socket.connect();
     return () => { socket.removeAllListeners(); socket.disconnect(); };
@@ -100,6 +101,11 @@ function App() {
       setText('');
     });
   }
+  function donate(amount) {
+    socket.timeout(5000).emit('donate', amount, (timeout, result) => {
+      if (timeout || result.error) setError(result?.error || '應援連線逾時。');
+    });
+  }
   async function share() {
     try { await navigator.clipboard.writeText(location.href); setNotice('觀看連結已複製'); }
     catch { setNotice(`無法自動複製，請手動複製：${location.href}`); }
@@ -113,6 +119,7 @@ function App() {
         <div className="video-wrap"><Player live={connected && state.live}/><span className={`live-badge ${state.live && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
         <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 影音直播</span></div>
+        <div className="support-bar" aria-label="示範應援"><span>示範點數：<b>{points}</b> · 本場應援：<b>{state.supportTotal || 0}</b></span>{[1, 5, 10].map((amount) => <button key={amount} disabled={!connected || points < amount} onClick={() => donate(amount)}>應援 {amount}</button>)}</div>
         <div className="play-hint">播放預設靜音，點播放器音量鍵即可開啟聲音。{!useWebRTC && 'HLS 影音會比即時聊天稍晚。'}</div>
       </section>
       <aside className="chat-panel" aria-label="即時聊天室"><div className="chat-heading"><h2>即時聊天室 <span>LIVE CHAT</span></h2><span className="chat-dot"/></div>

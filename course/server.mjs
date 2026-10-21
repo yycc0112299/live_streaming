@@ -14,6 +14,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   // shortcut: room state lives in one process; use shared storage before running multiple replicas.
   const history = [];
   let likes = 0;
+  let supportTotal = 0;
   let status = { live: false, available: false };
   let polling;
   const server = createServer(async (req, res) => {
@@ -91,7 +92,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       done(null, allowed && io.engine.clientsCount < 100);
     },
   });
-  function snapshot() { return { ...status, viewers: io.of('/').sockets.size, likes }; }
+  function snapshot() { return { ...status, viewers: io.of('/').sockets.size, likes, supportTotal }; }
   function broadcast() { io.emit('state', snapshot()); }
   function poll() {
     if (polling) return polling;
@@ -114,6 +115,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   void poll();
   io.on('connection', (socket) => {
     let nickname = '';
+    let points = 100;
     let messageAt = 0;
     let likeAt = 0;
     const acknowledge = (ack, value) => { if (typeof ack === 'function') ack(value); };
@@ -142,6 +144,15 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       likes++;
       io.emit('like', { likes });
       acknowledge(ack, { ok: true });
+    });
+    socket.emit('wallet', { points });
+    socket.on('donate', (value, ack) => {
+      const amount = Number(value);
+      if (![1, 5, 10].includes(amount)) return acknowledge(ack, { error: '應援點數只能選 1、5 或 10。' });
+      if (points < amount) return acknowledge(ack, { error: '應援點數不足。' });
+      points -= amount; supportTotal += amount;
+      io.emit('state', snapshot()); socket.emit('wallet', { points });
+      acknowledge(ack, { ok: true, points, supportTotal });
     });
     socket.on('disconnect', broadcast);
   });

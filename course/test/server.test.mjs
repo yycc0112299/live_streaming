@@ -115,6 +115,13 @@ test('reconnect provides recent history and requires a fresh nickname; likes are
   assert.equal((await like)[0].likes, 1);
   assert.ok((await emit(a, 'like')).error);
 });
+test('demo points allow only fixed donations and reject overspending', async (t) => {
+  const { url } = await setup(t);
+  const a = await client(t, url);
+  assert.deepEqual(await emit(a, 'donate', 10), { ok: true, points: 90, supportTotal: 10 });
+  assert.ok((await emit(a, 'donate', 2)).error);
+  assert.ok((await emit(a, 'donate', 100)).error);
+});
 test('foreign browser origins cannot create a chat connection', async (t) => {
   const { url } = await setup(t);
   const socket = connect(url, { transports: ['websocket'], reconnection: false, extraHeaders: { Origin: 'https://other.example' } });

@@ -31,3 +31,7 @@ Setup evidence (2026-10-15): the configured deployment succeeded with all five r
 ## 延遲驗證紀錄
 
 課程展示的目前端到端網站延遲以約 2 秒為準；同機 WebRTC 的 0.1–0.3 秒是局部對照結果，不能代表 HLS 網站觀看延遲。完整排查與啟停流程見 [延遲排查SOP.md](延遲排查SOP.md)，量測證據見 [course/VERIFICATION.md](course/VERIFICATION.md)。
+
+## Current demo support feature
+
+The course app now includes a clearly labelled demo support wallet: each connection starts with 100 non-cash points and can send 1, 5, or 10 points. The server validates the amount and balance and broadcasts the in-room total. It is intentionally session-scoped and is not a real payment system.

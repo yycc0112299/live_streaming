@@ -27,3 +27,7 @@ See [architecture](docs/ARCHITECTURE.md), [Pure Live comparison](docs/PURE_LIVE_
 `site/` contains the separate HTTPS/LiveKit Cloud version for phone broadcasting and invited viewers. Its setup, secret names, 12-hour viewer invites, and operational limits are documented in [site/README.md](site/README.md). The public Site URL is <https://mobile-cross-network-live.sureflea64.chatgpt.site>. Actual phone-to-phone audio/video/chat across different networks still requires a real device test. The original local demo and port 4173 remain independent.
 
 Setup evidence (2026-10-15): the configured deployment succeeded with all five runtime entries stored as secrets. LiveKit RoomService and participant signaling validation returned HTTP 200; hosted private and public endpoint smoke tests each passed 10/10 checks. The Site is public, but a viewer still needs a signed invite and the owner needs the creator key. No two-device media test has passed yet.
+
+## 延遲驗證紀錄
+
+課程展示的目前端到端網站延遲以約 2 秒為準；同機 WebRTC 的 0.1–0.3 秒是局部對照結果，不能代表 HLS 網站觀看延遲。完整排查與啟停流程見 [延遲排查SOP.md](延遲排查SOP.md)，量測證據見 [course/VERIFICATION.md](course/VERIFICATION.md)。

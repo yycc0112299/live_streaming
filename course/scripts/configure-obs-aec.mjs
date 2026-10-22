@@ -1,5 +1,5 @@
 // OBS WebSocket v5, using Node's built-in WebSocket; credentials stay in OBS's local config.
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
@@ -95,6 +95,7 @@ try {
         if (peak < 0.001) throw new Error('OBS did not receive the synthetic AEC audio');
         if (peak > 0.5) throw new Error(`Synthetic AEC level is unexpectedly high: ${JSON.stringify({ peak, levels, volume: await request('GetInputVolume', { inputName: name }) })}`);
         const result = { passed: true, actualOBSBrowserSource: true, rerouteAudio: true, monitorType: 'NONE', peak, levels, rawMicrophonesAndDesktopInputsMuted: raw.length, source: 'synthetic AEC; no hardware microphone capture', at: new Date().toISOString() };
+        await mkdir(new URL('../evidence/', import.meta.url), { recursive: true });
         await writeFile(new URL('../evidence/aec-obs-smoke.json', import.meta.url), JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
       } else console.log('OBS now uses Group9 AEC Microphone; original mic/desktop inputs are muted. Backup is private; --restore reverses these changes.');
     } catch (error) { await restore(backup); backup.restored = true; await writeFile(backupPath, JSON.stringify(backup), { mode: 0o600 }); throw error; }

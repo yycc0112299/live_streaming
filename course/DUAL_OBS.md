@@ -81,3 +81,9 @@ AEC 引擎測試先執行 `install-aec.ps1`，再以 `.runtime/aec/venv/Scripts/
 此變更沿用 [MediaMTX](https://github.com/bluenviron/mediamtx) 及其已保留 MIT 授權的 WHEP reader、[OBS／obs-browser](https://github.com/obsproject/obs-browser) 的原生 Browser Source 音訊介面、[Socket.IO](https://github.com/socketio/socket.io)、[hls.js](https://github.com/video-dev/hls.js)、[React](https://github.com/facebook/react)，資料庫與密碼原語使用 [Node.js](https://github.com/nodejs/node) 內建 SQLite／scrypt。不另外下載一套登入／聊天產品替換現有應用；只寫本專案的身份、權限、交易與介面接線。
 
 AEC 查核另看了 [LocalVQE](https://github.com/localai-org/LocalVQE)（Apache-2.0，有 OBS 濾鏡源碼、查核當下無現成 Windows release binary）、[rust-aec](https://github.com/DeviesVi/rust-aec)（WASAPI/AEC3、原版需虛擬音訊裝置）；最後採用上述固定 AEC Client 引擎及免驅動輸出接線。下載包沒有因 README 的防毒排除建議而變更本機防護設定。
+
+## 第二台電腦安裝包與實際聲學校正
+
+執行 `powershell -File scripts/package-aec.ps1` 產生 `.runtime/exports/OBS-AEC-Second-PC-<commit>.zip`；包內 `SECOND_PC.md` 列出第二台所需的 Python、Node 與 OBS 步驟。僅以白名單收錄程式／說明／授權，逐檔與 ZIP 讀回 SHA-256 核對；不含既有憑證、帳號、資料庫、音訊或第一台的 venv。`MANIFEST.json` 記錄來源 commit 與工作樹是否有未提交修改。
+
+`scripts/calibrate-aec.py` 可用實際喇叭與麥克風做 6 秒低音量校正，原始聲音只在記憶體分析，不寫成錄音。使用前須停止推流／錄影，並確認參考對應到實際播放裝置；`--self-test` 只測計算、不開啟聲音。測試回灌訊號不足時輸出 `inconclusive`，不能解讀為通過。完整雙機單講／雙講聽音仍是必要驗收。

@@ -1,0 +1,17 @@
+{
+  "result": "inconclusive",
+  "physicalMicrophoneAndSpeakerLoopback": true,
+  "playedSyntheticCalibrationSeconds": 6,
+  "digitalPlaybackPeak": 0.025,
+  "referenceRms": 0.004995384049506356,
+  "rawMicRms": 0.00023898257100786314,
+  "baselineMicRms": 0.00012631141807940063,
+  "referenceMicCorrelation": 0.2629,
+  "speakerEchoObserved": false,
+  "correlatedEchoReductionDb": null,
+  "rawEchoLagSamples": 2770,
+  "processedEchoLagSamples": 3154,
+  "rawAudioSaved": false,
+  "twoComputerNoHeadphonesAcceptance": false,
+  "at": "2026-10-22T04:19:11.811179+00:00"
+}

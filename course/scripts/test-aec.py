@@ -99,4 +99,5 @@ assert reference_benefit >= 3, 'Correct reference must outperform no reference b
 assert -20 <= near_gain <= 6, 'Near-only voice-like signal must not be muted or amplified excessively'
 assert double_talk_correlation >= 0.5, 'Near signal must remain identifiable while both sources are active'
 result['passed'] = True
+(root / 'evidence').mkdir(exist_ok=True)
 (root / 'evidence/aec-smoke.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')

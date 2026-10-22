@@ -160,3 +160,11 @@
 
 未完成的實際交付門檻：第二台 Windows 配置、兩台真實 OBS 推流、兩台喇叭開啟的單講／雙講／移動與音量測試、第三觀看端獨立聽音、長時間穩定度與跨網路；本分支也尚未部署 Azure。公開帳號必須先有 HTTPS。尚不能宣稱兩台完全免耳機且零回音，也不能以本機合成數據保證真實延遲。
 補充：已對上游 LiteRT 呼叫加上錯誤標記；注入推論故障的測試確認即使上游內部選擇 passthrough，bridge 仍會停止輸出，不將原始麥克風送回直播。重跑 AEC 合成、Browser Source 與還原／停服測試通過。GitHub PR #2 的 Linux 測試、建置、Compose 設定與 Docker image 建置亦通過。
+
+### 2026-10-22 第二台安裝包與首次實際聲學探測
+
+- 新增可重跑的 `scripts/calibrate-aec.py`，沿用上游 WASAPI／DTLN 與本機 OBS bridge 的輸入流程。相關回音計算先以已知延遲／衰減 fixture 自檢，驗證 123-sample 延遲及 20 dB 差值；不保存原始麥克風錄音。
+- 執行前讀回 OBS `GetStreamStatus`、`GetRecordStatus` 均為 `outputActive=false`。本機 Realtek 麥克風、Realtek 喇叭及相配 loopback 實際播放／擷取 6 秒，數位播放峰值限制 0.025，未改系統音量。參考 RMS 0.004995、原始麥克風 RMS 0.000239、基準 RMS 0.000126、相關係數 0.2629。回灌相對背景聲不足本工具的驗收門檻，結果 **inconclusive／無法判定**，不報回音消除通過。證據 `evidence/aec-acoustic-local.json`；不推論雙機免耳機已達成。
+- 新增第二台 AEC 設定包產生器，白名單 12 個來源檔＋manifest，ZIP 逐檔 SHA-256 讀回核對。套件不含任何既有 `.runtime`、推流密鑰、帳號或資料庫；上游 runtime 於第二台首次安裝時下載並核對固定 SHA-256。
+- 將安裝包解到全新中文／空白路徑，使用既有 Python 3.10.6 重新建立獨立 venv、安裝全部依賴，AEC 引擎／注入故障保護／近端及雙講 fixture 與校正自檢全部通過。發現並修正了全新套件不存在 `evidence/` 時無法寫入測試結果的問題。這是同一台電腦的全新安裝測試，**不是第二台實體電腦驗收**。
+- 本次音效裝置已在 finally 中關閉，沒有啟動網站推流、修改 OBS 場景、安裝驅動或改變系統音量。第二台的操作方式與兩台是否同房仍等待使用者提供，現階段保留未完成狀態。

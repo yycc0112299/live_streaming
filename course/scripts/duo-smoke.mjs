@@ -77,6 +77,7 @@ try {
   async function page(username, role) {
     const context = await browser.newContext(); contexts.push(context);
     await context.addInitScript(() => { const Native = RTCPeerConnection; window.smokePeers = []; window.RTCPeerConnection = class extends Native { constructor(config) { super(config); window.smokePeers.push(this); } }; });
+    await context.addInitScript(() => { window.spoken = []; window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } }; Object.defineProperty(window, 'speechSynthesis', { value: { speak: (speech) => window.spoken.push(speech.text), cancel: () => {} } }); });
     if (username !== 'SmokeViewer') {
       const response = await context.request.post(url + 'api/account/register', { data: { username, nickname: username, password: 'smoke-password-12345' } }); assert.equal(response.status(), 200);
     }
@@ -120,8 +121,9 @@ try {
     const rows = []; for (const pc of window.smokePeers) if (pc.connectionState === 'connected') for (const r of (await pc.getStats()).values()) if (r.type === 'inbound-rtp') rows.push({ kind: r.kind, bytesReceived: r.bytesReceived, ...(r.framesDecoded !== undefined ? { framesDecoded: r.framesDecoded } : {}) }); return rows;
   });
   assert.equal(stats.filter((r) => r.kind === 'audio' && r.bytesReceived > 0).length, 2); assert.equal(stats.filter((r) => r.kind === 'video' && r.framesDecoded >= 5).length, 2);
-  await guest.getByRole('textbox', { name: '聊天訊息', exact: true }).fill('雙 OBS 同台測試訊息'); await guest.getByRole('button', { name: '傳送 ↗', exact: true }).click();
+  await guest.getByRole('textbox', { name: '聊天訊息', exact: true }).fill('雙 OBS 同台測試訊息'); await guest.locator('#message').dispatchEvent('keydown', { key: 'Enter', isComposing: true, keyCode: 229 }); assert.equal(app.store.history().length, 0); await guest.getByRole('textbox', { name: '聊天訊息', exact: true }).press('Enter');
   await viewer.locator('.message').filter({ hasText: '雙 OBS 同台測試訊息' }).waitFor();
+  assert.deepEqual(await viewer.evaluate(() => window.spoken), []);
   await viewer.getByRole('button', { name: '應援 10', exact: true }).click(); await viewer.getByText('示範點數：90', { exact: false }).waitFor();
   await viewer.reload(); await viewer.getByText('示範點數：90', { exact: false }).waitFor(); await playing(viewer);
   await host.reload(); await playing(host); await host.getByText('本場主持人：SmokeHost', { exact: false }).waitFor();
@@ -153,13 +155,24 @@ try {
     await stage.waitFor({ state: 'detached', timeout: 10000 });
     await donor.context().close();
   }
+  assert.deepEqual(await viewer.evaluate(() => window.spoken), []);
+  await viewer.getByLabel('點數語音留言（10 點，最多 120 字）', { exact: true }).fill('這是點數語音留言');
+  await viewer.getByRole('button', { name: '花 10 點送出語音留言', exact: true }).click();
+  await viewer.waitForFunction(() => window.spoken.length === 1);
+  assert.deepEqual(await viewer.evaluate(() => window.spoken), ['這是點數語音留言']);
+  await viewer.getByText('示範點數：79', { exact: false }).waitFor();
+  const paid = app.store.db.prepare('SELECT id FROM donations WHERE message=?').get('這是點數語音留言');
+  app.io.emit('donation', { id: paid.id, amount: 10, nickname: 'SmokeViewer', message: '這是點數語音留言' });
+  await viewer.getByRole('button', { name: '查看／更新應援帳本', exact: true }).click();
+  await viewer.getByRole('cell', { name: '這是點數語音留言', exact: true }).waitFor();
+  assert.deepEqual(await viewer.evaluate(() => window.spoken), ['這是點數語音留言']);
   await second.stop(); await waitUntil(async () => !(await (await fetch(url + 'api/status')).json()).sources.guest.live);
   await playing(viewer, 1); second = await publish('guest', guestSecret, 'darkgreen', 660); await playing(viewer);
   await host.getByRole('button', { name: '結束本場應援記帳', exact: true }).click(); await first.stop(); await second.stop();
   await viewer.waitForFunction(() => [...document.querySelectorAll('.duo-grid video')].every((v) => v.hidden));
-  await viewer.reload(); await viewer.getByText('示範點數：89', { exact: false }).waitFor();
+  await viewer.reload(); await viewer.getByText('示範點數：79', { exact: false }).waitFor();
   assert.deepEqual(errors, []);
-  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'automatic visitor points without login', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'report and resolution', 'mute', 'delete', '390px layout', 'six gift tiers play in order', 'OBS control buttons via simulated controller'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
+  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'automatic visitor points without login', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'report and resolution', 'mute', 'delete', '390px layout', 'Enter sends chat without submitting IME composition', 'only paid messages speak once', 'six gift tiers play in order', 'OBS control buttons via simulated controller'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
   await writeFile(new URL('../evidence/duo-smoke.json', import.meta.url), JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
 } finally {
   for (const controller of controllers) controller.disconnect();

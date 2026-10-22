@@ -4,21 +4,21 @@
   "inboundRtp": [
     {
       "kind": "audio",
-      "bytesReceived": 12836
+      "bytesReceived": 12888
     },
     {
       "kind": "video",
-      "bytesReceived": 76938,
-      "framesDecoded": 44
+      "bytesReceived": 79870,
+      "framesDecoded": 42
     },
     {
       "kind": "audio",
-      "bytesReceived": 9589
+      "bytesReceived": 10294
     },
     {
       "kind": "video",
-      "bytesReceived": 67772,
-      "framesDecoded": 18
+      "bytesReceived": 72715,
+      "framesDecoded": 20
     }
   ],
   "checked": [
@@ -34,11 +34,13 @@
     "mute",
     "delete",
     "390px layout",
+    "Enter sends chat without submitting IME composition",
+    "only paid messages speak once",
     "six gift tiers play in order",
     "OBS control buttons via simulated controller"
   ],
   "physicalOBS": false,
   "acousticEchoCancellation": false,
   "crossNetwork": false,
-  "at": "2026-10-22T16:09:32.233Z"
+  "at": "2026-10-22T16:33:56.745Z"
 }

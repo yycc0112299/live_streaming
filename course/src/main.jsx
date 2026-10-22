@@ -78,6 +78,7 @@ function App() {
   const [room, setRoom] = useState({ host: null, guest: null, broadcastId: null });
   const [chatSettings, setChatSettings] = useState({ announcement: '', slowSeconds: 1 });
   const [pendingDonation, setPendingDonation] = useState(null);
+  const [speechText, setSpeechText] = useState('');
   const [donating, setDonating] = useState(false);
   const [guestUsername, setGuestUsername] = useState('');
   const [audioChecklist, setAudioChecklist] = useState(false);
@@ -118,18 +119,17 @@ function App() {
       setOverlay({ type: 'chat', ...message });
       window.clearTimeout(window.__group9OverlayTimer);
       window.__group9OverlayTimer = window.setTimeout(() => setOverlay(null), 6000);
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const speech = new SpeechSynthesisUtterance(message.text.slice(0, 120));
-        speech.lang = 'zh-TW'; speech.rate = 1.05; speech.volume = 0.9;
-        window.speechSynthesis.speak(speech);
-      }
     };
     const onDonation = (gift) => {
       if (giftIds.current.has(gift.id)) return;
       giftIds.current.add(gift.id);
       if (giftIds.current.size > 1000) giftIds.current.delete(giftIds.current.values().next().value);
       setGifts((items) => [...items, gift]);
+      if (gift.message && 'speechSynthesis' in window) {
+        const speech = new SpeechSynthesisUtterance(gift.message);
+        speech.lang = 'zh-TW'; speech.rate = 1.05; speech.volume = 0.9;
+        window.speechSynthesis.speak(speech);
+      }
     };
     const onLike = ({ likes }) => { setState((value) => ({ ...value, likes })); setHeart((n) => n + 1); };
     const onDeleted = (id) => { setMessages((items) => items.filter((message) => message.id !== id)); setOverlay((value) => value?.id === id ? null : value); };
@@ -143,17 +143,19 @@ function App() {
   useEffect(() => { if (chat.current) chat.current.scrollTop = chat.current.scrollHeight; }, [messages]);
   useEffect(() => { if (user && pendingDonation && pendingDonation.senderId !== user.id) setPendingDonation(null); }, [user?.id, pendingDonation]);
   function send(event) {
-    event.preventDefault(); setError(''); setSending(true);
+    event.preventDefault();
+    if (!connected || sending || !text.trim()) return;
+    setError(''); setSending(true);
     socket.timeout(5000).emit('chat', text, (timeout, result) => {
       setSending(false);
       if (timeout || result.error) return setError(result?.error || '訊息未確認送達，請先查看聊天室再重試。');
       setText('');
     });
   }
-  async function donate(amount) {
-    const request = pendingDonation || { amount, requestId: crypto.randomUUID(), broadcastId: room.broadcastId, senderId: user?.id };
+  async function donate(amount, message = '') {
+    const request = pendingDonation || { amount, requestId: crypto.randomUUID(), broadcastId: room.broadcastId, senderId: user?.id, message };
     setPendingDonation(request); setDonating(true); setError('');
-    try { await command('donate', request); setPendingDonation(null); }
+    try { await command('donate', request); setPendingDonation(null); if (request.message) setSpeechText(''); }
     catch (error) { onError(error); }
     finally { setDonating(false); }
   }
@@ -177,6 +179,7 @@ function App() {
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
         <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 雙 OBS</span></div>
         <div className="support-bar" aria-label="示範應援"><span>示範點數：<b>{user?.points || 0}</b> · 本場應援：<b>{state.supportTotal || 0}</b></span>{GIFTS.map(({ amount, name, icon }) => <button title={name} key={amount} disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}>應援 {amount}<span aria-hidden="true"> {icon}</span></button>)}{pendingDonation && <><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>重查／重試同一筆應援</button><button disabled={donating} onClick={() => setPendingDonation(null)}>關閉待確認（請先查帳本）</button></>}</div>
+        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim()) donate(10, speechText.trim()); }}><label>點數語音留言（10 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < 10 || donating || Boolean(pendingDonation) || !speechText.trim()}>花 10 點送出語音留言</button><p className="muted">一般聊天不會朗讀。只有成功扣點的語音留言才會播放；內容依序朗讀，瀏覽器可能需要先點一下網頁才能出聲。</p></form>
         <div className="play-hint">觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。{!useWebRTC && 'HLS 影音會比聊天稍晚。'}</div>
         {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError}/>}
         {management && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2>{room.host ? <><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">結束記帳不會遙控 OBS；兩台電腦仍需各自按「停止串流」。</p></> : <form className="account-form" onSubmit={(event) => { event.preventDefault(); roomAction('room:start'); }}><label>第二台參與者帳號<input required maxLength="64" value={guestUsername} onChange={(e) => setGuestUsername(e.target.value)}/></label><label className="checklist"><input type="checkbox" checked={audioChecklist} onChange={(e) => setAudioChecklist(e.target.checked)}/>兩台均已啟動 AEC Browser Source、停用原始麥克風與桌面音訊</label><button disabled={!audioChecklist || roomBusy}>開啟雙 OBS 直播間</button></form>}</section>}
@@ -188,7 +191,7 @@ function App() {
           {messages.length === 0 && <div className="empty-chat">美好的對話，從一句哈囉開始。</div>}
           {messages.map((message) => <div className="message" key={message.id}><div className="message-meta"><strong>{message.nickname}</strong><time dateTime={message.at}>{new Date(message.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</time></div><p>{message.text}</p>{user && <div className="message-tools"><button onClick={() => { const reason = window.prompt('檢舉原因（最多 200 字）'); if (reason) command('chat:report', { messageId: message.id, reason }).then(() => setNotice('檢舉已送出')).catch(onError); }}>檢舉</button>{management && <><button onClick={() => command('chat:manage', { action: 'delete', messageId: message.id }).catch(onError)}>刪除</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 10 }).catch(onError)}>禁言</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 0 }).catch(onError)}>解除禁言</button></>}</div>}</div>)}
         </div>
-        <div className="composer">{user ? <><div className="identity">以 <b>{user.nickname}</b> 發言 · 間隔 {chatSettings.slowSeconds} 秒</div><form onSubmit={send}><label className="sr-only" htmlFor="message">聊天訊息</label><textarea id="message" rows="2" maxLength="500" placeholder="說點什麼吧…" value={text} onChange={(e) => setText(e.target.value)} disabled={!connected}/><div className="compose-footer"><span>{text.length}/500</span><button className="primary" disabled={!connected || sending || !text.trim()}>{sending ? '傳送中…' : '傳送 ↗'}</button></div></form></> : <p>正在建立訪客身份，連線完成後即可聊天。</p>}
+        <div className="composer">{user ? <><div className="identity">以 <b>{user.nickname}</b> 發言 · 間隔 {chatSettings.slowSeconds} 秒</div><form onSubmit={send}><label className="sr-only" htmlFor="message">聊天訊息</label><textarea id="message" rows="2" maxLength="500" placeholder="說點什麼吧…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) { event.preventDefault(); event.currentTarget.form.requestSubmit(); } }} disabled={!connected}/><div className="compose-footer"><span>{text.length}/500</span><button className="primary" disabled={!connected || sending || !text.trim()}>{sending ? '傳送中…' : '傳送 ↗'}</button></div></form></> : <p>正在建立訪客身份，連線完成後即可聊天。</p>}
           {error && <p className="error" role="alert">{error}</p>}
         </div>
       </aside></div>

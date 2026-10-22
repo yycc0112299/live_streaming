@@ -210,7 +210,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       const transaction = store.donate(user, value, active ? room.state().broadcastId : null);
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.id === user.id || peer.data.user?.id === transaction.recipient_id) { peer.emit('account', store.user(peer.data.user.id)); peer.emit('ledger:changed'); }
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.role === 'admin' && peer.data.user.id !== user.id && peer.data.user.id !== transaction.recipient_id) peer.emit('ledger:changed');
-      if (!transaction.duplicate) io.emit('donation', { id: transaction.id, amount: transaction.amount, nickname: user.nickname });
+      if (!transaction.duplicate) io.emit('donation', { id: transaction.id, amount: transaction.amount, nickname: user.nickname, message: transaction.message });
       broadcast();
       return { ok: true, id: transaction.id, duplicate: Boolean(transaction.duplicate), points: store.user(user.id).points, supportTotal: store.supportTotal(room.state().broadcastId) };
     });

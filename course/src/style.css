@@ -639,3 +639,8 @@ footer {
 .gift-sprite svg { display:block; width:100%; overflow:visible; }
 .carnival-wheel { animation:gift-spin 18s linear infinite; }
 .rocket-flame { transform-origin:110px 208px; animation:gift-beat .15s ease-in-out infinite alternate; }
+
+.speech-redeem { padding:12px 0; display:flex; flex-wrap:wrap; gap:10px; align-items:end; }
+.speech-redeem label { display:flex; flex:1; min-width:180px; flex-direction:column; gap:6px; font-size:13px; }
+.speech-redeem input,.composer input { width:100%; padding:12px; border:1px solid #384457; border-radius:8px; background:#0c121e; color:#e8edf7; box-sizing:border-box; }
+.speech-redeem p { flex-basis:100%; margin:0; }

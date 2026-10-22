@@ -21,7 +21,7 @@ export function openStore(path) {
     CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, nickname TEXT NOT NULL, password TEXT NOT NULL, salt TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('viewer','host','admin')), points INTEGER NOT NULL DEFAULT 100 CHECK(points>=0), created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS broadcasts(id TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id), guest_id TEXT REFERENCES users(id), started_at TEXT NOT NULL, ended_at TEXT);
-    CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
+    CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
     CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), nickname TEXT NOT NULL, text TEXT NOT NULL, at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), announcement TEXT NOT NULL DEFAULT '', slow_seconds INTEGER NOT NULL DEFAULT 1, words TEXT NOT NULL DEFAULT '[]');
     INSERT OR IGNORE INTO settings(id) VALUES(1);
@@ -41,6 +41,7 @@ export function openStore(path) {
       db.exec('INSERT INTO donations SELECT * FROM donations_legacy; DROP TABLE donations_legacy; CREATE INDEX donations_recipient ON donations(recipient_id,created_at); CREATE INDEX donations_broadcast ON donations(broadcast_id); COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
   }
+  if (!db.prepare('PRAGMA table_info(donations)').all().some((column) => column.name === 'message')) db.exec("ALTER TABLE donations ADD COLUMN message TEXT NOT NULL DEFAULT ''");
   if (!db.prepare('PRAGMA table_info(broadcasts)').all().some((column) => column.name === 'guest_id')) db.exec('ALTER TABLE broadcasts ADD COLUMN guest_id TEXT REFERENCES users(id)');
   const get = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
@@ -128,26 +129,33 @@ export function openStore(path) {
     if (count >= 10) throw new Error('每小時最多檢舉 10 次。');
     run('INSERT OR IGNORE INTO reports(id,message_id,reporter_id,reason,created_at) VALUES(?,?,?,?,?)', randomUUID(), messageId, actor.id, text, new Date().toISOString());
   }
-  function donate(sender, { amount, requestId, broadcastId } = {}, activeBroadcast) {
+  function donate(sender, { amount, requestId, broadcastId, message = '' } = {}, activeBroadcast) {
     if (!GIFTS.some((gift) => gift.amount === amount) || typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || typeof broadcastId !== 'string') throw new Error('應援金額或請求 ID 無效。');
+    if (typeof message !== 'string') throw new Error('語音留言格式錯誤。');
+    const speech = message ? checkText(message, 120, '語音留言') : '';
+    if (speech && amount !== 10) throw new Error('語音留言需花費 10 示範點數。');
     return transaction(() => {
       const old = get('SELECT * FROM donations WHERE sender_id=? AND request_id=?', sender.id, requestId);
       if (old) {
-        if (old.amount !== amount || old.broadcast_id !== broadcastId) throw new Error('請求 ID 已被其他交易使用。');
+        if (old.amount !== amount || old.broadcast_id !== broadcastId || old.message !== speech) throw new Error('請求 ID 已被其他交易使用。');
         return { ...old, duplicate: true };
+      }
+      if (speech) {
+        if (get('SELECT until_ms FROM mutes WHERE user_id=?', sender.id)?.until_ms > Date.now()) throw new Error('禁言期間不能使用語音留言。');
+        if (settings().words.some((word) => speech.toLowerCase().includes(word.toLowerCase()))) throw new Error('語音留言含有聊天室限制詞。');
       }
       const room = get('SELECT * FROM broadcasts WHERE id=? AND ended_at IS NULL', broadcastId);
       if (!room || broadcastId !== activeBroadcast) throw new Error('本場直播已結束，請重新確認。');
       if (room.host_id === sender.id) throw new Error('不能應援自己。');
       if (!run('UPDATE users SET points=points-? WHERE id=? AND points>=?', amount, sender.id, amount).changes) throw new Error('應援點數不足。');
       const id = randomUUID();
-      run('INSERT INTO donations VALUES(?,?,?,?,?,?,?)', id, sender.id, room.host_id, broadcastId, amount, requestId, new Date().toISOString());
+      run('INSERT INTO donations(id,sender_id,recipient_id,broadcast_id,amount,request_id,created_at,message) VALUES(?,?,?,?,?,?,?,?)', id, sender.id, room.host_id, broadcastId, amount, requestId, new Date().toISOString(), speech);
       return get('SELECT * FROM donations WHERE id=?', id);
     });
   }
   function ledger(actor, before = null) {
     if (before !== null && (!Number.isSafeInteger(before) || before < 1)) throw new Error('無效的帳本分頁');
-    const select = 'SELECT d.rowid AS cursor,d.id,d.amount,d.request_id AS requestId,d.broadcast_id AS broadcastId,d.created_at AS at,s.username AS sender,r.username AS recipient FROM donations d JOIN users s ON s.id=d.sender_id JOIN users r ON r.id=d.recipient_id';
+    const select = 'SELECT d.rowid AS cursor,d.id,d.amount,d.request_id AS requestId,d.broadcast_id AS broadcastId,d.created_at AS at,d.message,s.username AS sender,r.username AS recipient FROM donations d JOIN users s ON s.id=d.sender_id JOIN users r ON r.id=d.recipient_id';
     const rows = actor.role === 'admin' ? all(`${select} WHERE d.rowid<? ORDER BY d.rowid DESC LIMIT 101`, before ?? Number.MAX_SAFE_INTEGER) : all(`${select} WHERE (d.sender_id=? OR d.recipient_id=?) AND d.rowid<? ORDER BY d.rowid DESC LIMIT 101`, actor.id, actor.id, before ?? Number.MAX_SAFE_INTEGER);
     const nextCursor = rows.length > 100 ? rows[99].cursor : null;
     rows.splice(100);

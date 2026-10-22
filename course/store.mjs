@@ -1,3 +1,4 @@
+import { GIFTS } from './gifts.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -20,7 +21,7 @@ export function openStore(path) {
     CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, nickname TEXT NOT NULL, password TEXT NOT NULL, salt TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('viewer','host','admin')), points INTEGER NOT NULL DEFAULT 100 CHECK(points>=0), created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS broadcasts(id TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id), guest_id TEXT REFERENCES users(id), started_at TEXT NOT NULL, ended_at TEXT);
-    CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
+    CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
     CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), nickname TEXT NOT NULL, text TEXT NOT NULL, at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), announcement TEXT NOT NULL DEFAULT '', slow_seconds INTEGER NOT NULL DEFAULT 1, words TEXT NOT NULL DEFAULT '[]');
     INSERT OR IGNORE INTO settings(id) VALUES(1);
@@ -31,6 +32,15 @@ export function openStore(path) {
     CREATE INDEX IF NOT EXISTS messages_user ON messages(user_id);
     CREATE INDEX IF NOT EXISTS donations_recipient ON donations(recipient_id,created_at);
     CREATE INDEX IF NOT EXISTS donations_broadcast ON donations(broadcast_id);`);
+  const donationSchema = db.prepare("SELECT sql FROM sqlite_master WHERE name='donations'").get().sql;
+  if (donationSchema.includes('CHECK(amount IN (1,5,10))')) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec('ALTER TABLE donations RENAME TO donations_legacy');
+      db.exec(donationSchema.replace('CHECK(amount IN (1,5,10))', 'CHECK(amount IN (1,5,10,25,50,100))'));
+      db.exec('INSERT INTO donations SELECT * FROM donations_legacy; DROP TABLE donations_legacy; CREATE INDEX donations_recipient ON donations(recipient_id,created_at); CREATE INDEX donations_broadcast ON donations(broadcast_id); COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  }
   if (!db.prepare('PRAGMA table_info(broadcasts)').all().some((column) => column.name === 'guest_id')) db.exec('ALTER TABLE broadcasts ADD COLUMN guest_id TEXT REFERENCES users(id)');
   const get = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
@@ -48,7 +58,7 @@ export function openStore(path) {
   }
   function guest() {
     const id = randomUUID();
-    run('INSERT INTO users(id,username,nickname,password,salt,created_at) VALUES(?,?,?,?,?,?)', id, `visitor-${id}`, `訪客${id.slice(0, 6)}`, '', '', new Date().toISOString());
+    run('INSERT INTO users(id,username,nickname,password,salt,created_at) VALUES(?,?,?,?,?,?)', id, `visitor-${randomBytes(8).toString('hex')}`, `訪客${id.slice(0, 6)}`, '', '', new Date().toISOString());
     return user(id);
   }
   async function register({ username, password, nickname } = {}) {
@@ -119,7 +129,7 @@ export function openStore(path) {
     run('INSERT OR IGNORE INTO reports(id,message_id,reporter_id,reason,created_at) VALUES(?,?,?,?,?)', randomUUID(), messageId, actor.id, text, new Date().toISOString());
   }
   function donate(sender, { amount, requestId, broadcastId } = {}, activeBroadcast) {
-    if (![1, 5, 10].includes(amount) || typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || typeof broadcastId !== 'string') throw new Error('應援金額或請求 ID 無效。');
+    if (!GIFTS.some((gift) => gift.amount === amount) || typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || typeof broadcastId !== 'string') throw new Error('應援金額或請求 ID 無效。');
     return transaction(() => {
       const old = get('SELECT * FROM donations WHERE sender_id=? AND request_id=?', sender.id, requestId);
       if (old) {

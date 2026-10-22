@@ -1,3 +1,5 @@
+import { io as connectController } from 'socket.io-client';
+import { GIFTS } from '../gifts.mjs';
 // Build with VITE_WEBRTC=true first. Uses two synthetic WHIP senders in place of the two OBS PCs.
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
@@ -32,7 +34,7 @@ const mediaExe = process.env.MEDIAMTX || fileURLToPath(new URL('../.runtime/medi
 const media = spawn(mediaExe, [configPath], { windowsHide: true, stdio: 'ignore' });
 const mediaDone = new Promise((resolve) => { media.on('close', resolve); media.on('error', resolve); });
 const app = createCourseApp({ dbPath: join(dir, 'live.sqlite'), apiUrl: `http://127.0.0.1:${apiPort}`, webrtcUrl: `http://127.0.0.1:${webrtcPort}`, pollMs: 100, publicOrigin: '' });
-const contexts = []; const errors = []; const publishers = [];
+const contexts = []; const errors = []; const publishers = []; const controllers = [];
 let browser;
 async function waitUntil(fn, timeout = 15000) {
   const end = Date.now() + timeout;
@@ -90,6 +92,22 @@ try {
   const host = await page('SmokeHost', 'host'); const guest = await page('SmokeGuest'); const viewer = await page('SmokeViewer');
   await host.getByLabel('第二台參與者帳號', { exact: true }).fill('SmokeGuest');
   await host.getByRole('checkbox').check(); await host.getByRole('button', { name: '開啟雙 OBS 直播間', exact: true }).click();
+  await host.getByRole('button', { name: '產生本機 OBS 配對碼', exact: true }).click();
+  const pairText = await host.locator('.management code').innerText();
+  const code = pairText.match(/[a-f0-9]{48}$/)[0];
+  const controller = connectController(url, { transports: ['websocket'], auth: { obsPair: code }, reconnection: false }); controllers.push(controller);
+  await once(controller, 'obs:bound');
+  const obsState = { streaming: true, microphone: true, camera: true };
+  controller.on('obs:execute', (value, ack) => { if (value.action === 'stop') obsState.streaming = false; else if (value.action !== 'status') obsState[value.action] = value.enabled; ack(obsState); });
+  await host.getByRole('button', { name: '讀取 OBS 狀態', exact: true }).click();
+  await host.getByRole('button', { name: '關閉麥克風', exact: true }).click();
+  await host.getByRole('button', { name: '開啟麥克風', exact: true }).click();
+  await host.getByRole('button', { name: '關閉鏡頭', exact: true }).click();
+  await host.getByRole('button', { name: '開啟鏡頭', exact: true }).click();
+  host.once('dialog', (dialog) => dialog.accept());
+  await host.getByRole('button', { name: '結束我的直播', exact: true }).click();
+  await host.getByText('OBS：已停止', { exact: false }).waitFor();
+  assert.deepEqual(obsState, { streaming: false, microphone: true, camera: true });
   const first = await publish('live', secret, 'navy', 440); let second = await publish('guest', guestSecret, 'darkgreen', 660);
   const playing = (tab, count = 2) => tab.waitForFunction((n) => [...document.querySelectorAll('.duo-grid video')].filter((v) => v.readyState >= 2 && v.videoWidth === 640 && v.currentTime > 0 && v.srcObject?.getAudioTracks().some((t) => t.readyState === 'live')).length === n, count);
   await playing(viewer); await playing(host); await playing(guest);
@@ -124,15 +142,27 @@ try {
   await host.getByText('主播累計收到 11 點', { exact: false }).waitFor();
   await viewer.setViewportSize({ width: 390, height: 844 }); await mkdir(new URL('../evidence/', import.meta.url), { recursive: true });
   await viewer.screenshot({ path: fileURLToPath(new URL('../evidence/duo-mobile.png', import.meta.url)), fullPage: true }); assert.equal(await viewer.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  for (const gift of GIFTS) {
+    const donor = await page('SmokeViewer');
+    await donor.getByRole('button', { name: `應援 ${gift.amount}`, exact: true }).click();
+    const stage = viewer.locator(`.gift-${gift.kind}`);
+    await stage.waitFor({ state: 'visible', timeout: 20000 });
+    assert.match(await stage.innerText(), new RegExp(gift.name));
+    if (gift.amount === 100) await viewer.waitForFunction(() => getComputedStyle(document.querySelector('.gift-carnival .gift-sprite')).transform === 'matrix(1, 0, 0, 1, 0, 0)');
+    if (gift.amount === 100) await viewer.screenshot({ path: fileURLToPath(new URL('../evidence/gift-carnival.png', import.meta.url)), fullPage: true });
+    await stage.waitFor({ state: 'detached', timeout: 10000 });
+    await donor.context().close();
+  }
   await second.stop(); await waitUntil(async () => !(await (await fetch(url + 'api/status')).json()).sources.guest.live);
   await playing(viewer, 1); second = await publish('guest', guestSecret, 'darkgreen', 660); await playing(viewer);
   await host.getByRole('button', { name: '結束本場應援記帳', exact: true }).click(); await first.stop(); await second.stop();
   await viewer.waitForFunction(() => [...document.querySelectorAll('.duo-grid video')].every((v) => v.hidden));
   await viewer.reload(); await viewer.getByText('示範點數：89', { exact: false }).waitFor();
   assert.deepEqual(errors, []);
-  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'automatic visitor points without login', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'report and resolution', 'mute', 'delete', '390px layout'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
+  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'automatic visitor points without login', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'report and resolution', 'mute', 'delete', '390px layout', 'six gift tiers play in order', 'OBS control buttons via simulated controller'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
   await writeFile(new URL('../evidence/duo-smoke.json', import.meta.url), JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
 } finally {
+  for (const controller of controllers) controller.disconnect();
   for (const context of contexts) await context.close(); await browser?.close(); await app.close();
   media.kill(); await mediaDone; await rm(dir, { recursive: true, force: true });
 }

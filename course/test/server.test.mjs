@@ -149,7 +149,7 @@ test('points are account scoped, atomic, idempotent and cannot be self-donated',
   assert.equal(s.app.store.user(user.id).points, 90);
   assert.ok((await emit(a, 'donate', { ...value, amount: 5 })).error);
   assert.ok((await emit(host, 'donate', { ...value, requestId: crypto.randomUUID() })).error);
-  for (const amount of [2, 100, -5, '10', null]) assert.ok((await emit(a, 'donate', { ...value, amount, requestId: crypto.randomUUID() })).error);
+  for (const amount of [2, 101, -5, '10', null]) assert.ok((await emit(a, 'donate', { ...value, amount, requestId: crypto.randomUUID() })).error);
   const reconnect = await client(t, s.url, { extraHeaders: { Cookie: `group9_session=${token}` } });
   assert.equal((await emit(reconnect, 'ledger')).points, 90);
   const results = await Promise.all(Array.from({ length: 10 }, () => emit(a, 'donate', { amount: 10, requestId: crypto.randomUUID(), broadcastId })));
@@ -261,4 +261,29 @@ test('visitors get 100 points without registration and cannot refill an existing
   assert.ok((await emit(visitor, 'chat:review')).error);
   await assert.rejects(s.app.store.login({ username: user.username, password: 'anything' }), /帳號或密碼錯誤/);
   const foreign = await fetch(s.url + '/api/account/guest', { method: 'POST', headers: { Origin: 'https://foreign.example', 'Content-Type': 'application/json' }, body: '{}' }); assert.equal(foreign.status, 403);
+});
+
+test('OBS controllers are paired once to each broadcaster and cannot control the other broadcaster', async (t) => {
+  const s = await setup(t);
+  const { socket: host } = await member(t, s, 'Host', 'host');
+  const { socket: guest } = await member(t, s, 'Guest');
+  const { socket: viewer } = await member(t, s, 'Viewer');
+  await emit(host, 'room:start', { guestUsername: 'Guest', audioChecklist: true });
+  assert.ok((await emit(viewer, 'obs:pair')).error);
+  const hostPair = await emit(host, 'obs:pair'); const guestPair = await emit(guest, 'obs:pair');
+  const hostAgent = await client(t, s.url, { auth: { obsPair: hostPair.code } });
+  const guestAgent = await client(t, s.url, { auth: { obsPair: guestPair.code } });
+  await s.app.poll();
+  assert.equal(hostAgent.connected, true); assert.equal(guestAgent.connected, true);
+  const commands = [];
+  hostAgent.on('obs:execute', (value, ack) => { commands.push('host:' + value.action); ack({ streaming: true, microphone: false, camera: true }); });
+  guestAgent.on('obs:execute', (value, ack) => { commands.push('guest:' + value.action); ack({ streaming: false, microphone: true, camera: false }); });
+  assert.equal((await emit(host, 'obs:control', { action: 'microphone', enabled: false })).microphone, false);
+  assert.equal((await emit(guest, 'obs:control', { action: 'stop', userId: 'Host' })).streaming, false);
+  assert.deepEqual(commands, ['host:microphone', 'guest:stop']);
+  assert.ok((await emit(viewer, 'obs:control', { action: 'stop' })).error);
+  assert.ok((await emit(host, 'obs:control', { action: 'microphone', enabled: 'false' })).error);
+  const replay = connect(s.url, { transports: ['websocket'], reconnection: false, auth: { obsPair: hostPair.code } });
+  t.after(() => replay.disconnect());
+  const [error] = await once(replay, 'obs:error'); assert.match(error, /配對碼/);
 });

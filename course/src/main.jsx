@@ -1,3 +1,6 @@
+import OBSControls from './OBSControls.jsx';
+import { GIFTS } from '../gifts.mjs';
+import GiftOverlay from './GiftOverlay.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Hls from 'hls.js';
@@ -79,6 +82,8 @@ function App() {
   const [guestUsername, setGuestUsername] = useState('');
   const [audioChecklist, setAudioChecklist] = useState(false);
   const [roomBusy, setRoomBusy] = useState(false);
+  const [gifts, setGifts] = useState([]);
+  const giftIds = useRef(new Set());
   const [overlay, setOverlay] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -120,10 +125,11 @@ function App() {
         window.speechSynthesis.speak(speech);
       }
     };
-    const onDonation = ({ amount, nickname }) => {
-      setOverlay({ type: 'donation', amount, nickname });
-      window.clearTimeout(window.__group9OverlayTimer);
-      window.__group9OverlayTimer = window.setTimeout(() => setOverlay(null), 5000);
+    const onDonation = (gift) => {
+      if (giftIds.current.has(gift.id)) return;
+      giftIds.current.add(gift.id);
+      if (giftIds.current.size > 1000) giftIds.current.delete(giftIds.current.values().next().value);
+      setGifts((items) => [...items, gift]);
     };
     const onLike = ({ likes }) => { setState((value) => ({ ...value, likes })); setHeart((n) => n + 1); };
     const onDeleted = (id) => { setMessages((items) => items.filter((message) => message.id !== id)); setOverlay((value) => value?.id === id ? null : value); };
@@ -133,6 +139,7 @@ function App() {
     reloadAccount().catch(onError);
     return () => { socket.removeAllListeners(); socket.disconnect(); window.speechSynthesis?.cancel(); window.clearTimeout(window.__group9OverlayTimer); };
   }, []);
+  useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 3000); return () => clearTimeout(timer); }, [notice]);
   useEffect(() => { if (chat.current) chat.current.scrollTop = chat.current.scrollHeight; }, [messages]);
   useEffect(() => { if (user && pendingDonation && pendingDonation.senderId !== user.id) setPendingDonation(null); }, [user?.id, pendingDonation]);
   function send(event) {
@@ -166,12 +173,13 @@ function App() {
       <div className="eyebrow">ONE ROOM. SHARED MOMENTS.</div>
       <div className="heading"><div><h1>讓每個瞬間，<em>即時相聚。</em></h1><p>一場直播，一個聊天室。打開瀏覽器，就在現場。</p></div><button className="share" onClick={share}>↗ 分享直播間</button></div>
       <div className="room-grid"><section className="broadcast" aria-label="直播間">
-        <div className="video-wrap"><div className="duo-section"><h2>雙 OBS 同台直播</h2><div className="duo-grid">{[{ path: 'live', name: room.host?.nickname || '第一台 OBS', userId: room.host?.userId }, { path: 'guest', name: room.guest?.nickname || '第二台 OBS', userId: room.guest?.userId }].map((source) => <Player key={source.path} path={source.path} name={source.name} silent={Boolean(user && source.userId === user.id)} live={connected && Boolean(state.sources?.[source.path]?.live)}/>)}</div></div>{overlay && <div className={`stream-overlay ${overlay.type}`} role="status">{overlay.type === 'donation' ? <><strong>🎁 {overlay.nickname} 應援 {overlay.amount} 點</strong><span>謝謝支持！</span></> : <><strong>{overlay.nickname}</strong><span>{overlay.text}</span></>}</div>}<span className={`live-badge ${(state.live || state.sources?.guest?.live) && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live || state.sources?.guest?.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
+        <div className="video-wrap"><div className="duo-section"><h2>雙 OBS 同台直播</h2><div className="duo-grid">{[{ path: 'live', name: room.host?.nickname || '第一台 OBS', userId: room.host?.userId }, { path: 'guest', name: room.guest?.nickname || '第二台 OBS', userId: room.guest?.userId }].map((source) => <Player key={source.path} path={source.path} name={source.name} silent={Boolean(user && source.userId === user.id)} live={connected && Boolean(state.sources?.[source.path]?.live)}/>)}</div></div><GiftOverlay gifts={gifts} onDone={() => setGifts((items) => items.slice(1))}/>{overlay && <div className={`stream-overlay ${overlay.type}`} role="status">{overlay.type === 'donation' ? <><strong>🎁 {overlay.nickname} 應援 {overlay.amount} 點</strong><span>謝謝支持！</span></> : <><strong>{overlay.nickname}</strong><span>{overlay.text}</span></>}</div>}<span className={`live-badge ${(state.live || state.sources?.guest?.live) && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live || state.sources?.guest?.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
         <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 雙 OBS</span></div>
-        <div className="support-bar" aria-label="示範應援"><span>示範點數：<b>{user?.points || 0}</b> · 本場應援：<b>{state.supportTotal || 0}</b></span>{[1, 5, 10].map((amount) => <button key={amount} disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}>應援 {amount}</button>)}{pendingDonation && <><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>重查／重試同一筆應援</button><button disabled={donating} onClick={() => setPendingDonation(null)}>關閉待確認（請先查帳本）</button></>}</div>
+        <div className="support-bar" aria-label="示範應援"><span>示範點數：<b>{user?.points || 0}</b> · 本場應援：<b>{state.supportTotal || 0}</b></span>{GIFTS.map(({ amount, name, icon }) => <button title={name} key={amount} disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}>應援 {amount}<span aria-hidden="true"> {icon}</span></button>)}{pendingDonation && <><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>重查／重試同一筆應援</button><button disabled={donating} onClick={() => setPendingDonation(null)}>關閉待確認（請先查帳本）</button></>}</div>
         <div className="play-hint">觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。{!useWebRTC && 'HLS 影音會比聊天稍晚。'}</div>
-        {management && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2>{room.host ? <><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">結束記帳不會遙控 OBS；兩台電腦仍需各自按「停止串流」。</p></> : <form className="account-form" onSubmit={(event) => { event.preventDefault(); roomAction('room:start'); }}><label>第二台參與者帳號<input required maxLength="24" value={guestUsername} onChange={(e) => setGuestUsername(e.target.value)}/></label><label className="checklist"><input type="checkbox" checked={audioChecklist} onChange={(e) => setAudioChecklist(e.target.checked)}/>兩台均已啟動 AEC Browser Source、停用原始麥克風與桌面音訊</label><button disabled={!audioChecklist || roomBusy}>開啟雙 OBS 直播間</button></form>}</section>}
+        {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError}/>}
+        {management && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2>{room.host ? <><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">結束記帳不會遙控 OBS；兩台電腦仍需各自按「停止串流」。</p></> : <form className="account-form" onSubmit={(event) => { event.preventDefault(); roomAction('room:start'); }}><label>第二台參與者帳號<input required maxLength="64" value={guestUsername} onChange={(e) => setGuestUsername(e.target.value)}/></label><label className="checklist"><input type="checkbox" checked={audioChecklist} onChange={(e) => setAudioChecklist(e.target.checked)}/>兩台均已啟動 AEC Browser Source、停用原始麥克風與桌面音訊</label><button disabled={!audioChecklist || roomBusy}>開啟雙 OBS 直播間</button></form>}</section>}
       </section>
       <aside className="chat-panel" aria-label="即時聊天室"><div className="chat-heading"><h2>即時聊天室 <span>LIVE CHAT</span></h2><span className="chat-dot"/></div>
         {chatSettings.announcement && <div className="announcement" role="status">📌 {chatSettings.announcement}</div>}

@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY index.html vite.config.js ./
+COPY gifts.mjs ./
 COPY src ./src
 ARG APP_BASE=/
 ARG VITE_WEBRTC=false
@@ -14,7 +15,7 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=4180
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
-COPY server.mjs store.mjs room.mjs ./
+COPY server.mjs store.mjs room.mjs gifts.mjs obs-controls.mjs ./
 COPY scripts/account-role.mjs ./scripts/account-role.mjs
 COPY --from=build /app/dist ./dist
 RUN mkdir -p /app/data && chown node:node /app/data

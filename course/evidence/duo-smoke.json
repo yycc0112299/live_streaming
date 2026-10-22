@@ -4,21 +4,21 @@
   "inboundRtp": [
     {
       "kind": "audio",
-      "bytesReceived": 12722
+      "bytesReceived": 12836
     },
     {
       "kind": "video",
-      "bytesReceived": 81201,
-      "framesDecoded": 45
+      "bytesReceived": 76938,
+      "framesDecoded": 44
     },
     {
       "kind": "audio",
-      "bytesReceived": 9720
+      "bytesReceived": 9589
     },
     {
       "kind": "video",
-      "bytesReceived": 73000,
-      "framesDecoded": 21
+      "bytesReceived": 67772,
+      "framesDecoded": 18
     }
   ],
   "checked": [
@@ -33,10 +33,12 @@
     "report and resolution",
     "mute",
     "delete",
-    "390px layout"
+    "390px layout",
+    "six gift tiers play in order",
+    "OBS control buttons via simulated controller"
   ],
   "physicalOBS": false,
   "acousticEchoCancellation": false,
   "crossNetwork": false,
-  "at": "2026-10-22T15:50:55.048Z"
+  "at": "2026-10-22T16:09:32.233Z"
 }

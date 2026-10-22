@@ -1,0 +1,23 @@
+import React, { useEffect } from 'react';
+import { GIFTS } from '../gifts.mjs';
+function GiftArt({ gift }) {
+  if (gift.kind === 'car') return <svg viewBox="0 0 420 210" aria-hidden="true"><defs><linearGradient id="carPaint" x2="0" y2="1"><stop stopColor="#fc4b89"/><stop offset="1" stopColor="#a90748"/></linearGradient></defs><ellipse cx="210" cy="180" rx="180" ry="12" fill="#72e3d9" opacity=".35"/><path d="M20 124L69 107L133 55Q145 45 173 45H254L321 99L389 118L403 155H18Z" fill="url(#carPaint)" stroke="#ffa7c9" strokeWidth="3"/><path d="M104 103L146 61H193V103ZM205 61H250L303 103H205Z" fill="#18344d" stroke="#81ebf4" strokeWidth="3"/><path d="M33 127H76L67 138H27M344 123L388 133" stroke="#fff0a3" strokeWidth="8"/><path d="M120 137H304" stroke="#ffccdd" strokeWidth="3"/>{[93,326].map((x) => <g key={x}><circle cx={x} cy="157" r="32" fill="#101622" stroke="#d7e6fa" strokeWidth="5"/><circle cx={x} cy="157" r="17" fill="#8ea5bd"/><circle cx={x} cy="157" r="6" fill="#101622"/></g>)}</svg>;
+  if (gift.kind === 'rocket') return <svg viewBox="0 0 220 300" aria-hidden="true"><defs><linearGradient id="rocketPaint" x2="1" y2="1"><stop stopColor="#f5ffff"/><stop offset="1" stopColor="#72a9de"/></linearGradient></defs><path className="rocket-flame" d="M83 208Q110 330 137 208Z" fill="#ffb64c"/><path d="M76 154L40 218L78 201M144 154L180 218L142 201" fill="#fc5e7d"/><path d="M110 18Q158 62 148 199Q110 222 72 199Q62 62 110 18Z" fill="url(#rocketPaint)" stroke="#d6faff" strokeWidth="3"/><path d="M110 18Q130 37 141 73H79Q90 37 110 18" fill="#fa607e"/><circle cx="110" cy="111" r="26" fill="#152b60" stroke="#60efef" strokeWidth="8"/><path d="M91 102L114 89" stroke="#d5ffff" strokeWidth="5" strokeLinecap="round"/></svg>;
+  if (gift.kind === 'carnival') return <svg viewBox="0 0 600 400" aria-hidden="true"><defs><linearGradient id="castlePaint" x2="0" y2="1"><stop stopColor="#ffe3a4"/><stop offset="1" stopColor="#ce6399"/></linearGradient><radialGradient id="nightGlow"><stop stopColor="#ffa9ec" stopOpacity=".6"/><stop offset="1" stopColor="#7c3eff" stopOpacity="0"/></radialGradient></defs><ellipse cx="300" cy="210" rx="290" ry="180" fill="url(#nightGlow)"/><path d="M50 355Q300 300 550 355" fill="none" stroke="#ffce82" strokeWidth="8"/><g className="carnival-wheel" style={{ transformOrigin:'455px 178px' }}><circle cx="455" cy="178" r="91" fill="#302568" stroke="#ffe3a7" strokeWidth="6"/>{Array.from({length:8},(_,i)=>{const a=i*Math.PI/4,x=455+91*Math.cos(a),y=178+91*Math.sin(a);return <g key={i}><path d={`M455 178L${x} ${y}`} stroke="#f8acdf" strokeWidth="3"/><rect x={x-12} y={y-9} width="24" height="22" rx="6" fill={i%2?'#69e4e8':'#ffb3d8'} stroke="#ffe8b3" strokeWidth="2"/></g>;})}<circle cx="455" cy="178" r="17" fill="#ffdc8c"/></g><path d="M455 178L406 342H504Z" fill="#d784b0" stroke="#ffdfa2" strokeWidth="4"/><path d="M96 320V186H168V320M202 320V141H284V320M316 320V186H380V320" fill="url(#castlePaint)" stroke="#ffe9b5" strokeWidth="4"/><path d="M84 186L132 100L180 186ZM190 141L243 45L296 141ZM304 186L348 100L392 186Z" fill="#bb508b" stroke="#ffe8af" strokeWidth="4"/><path d="M168 320V223H316V320" fill="#dc91bd" stroke="#ffdc94" strokeWidth="4"/><path d="M220 320V276Q242 238 264 276V320" fill="#56346d" stroke="#ffe1a6" strokeWidth="4"/>{[124,235,340].map((x)=><path key={x} d={`M${x} 200V176Q${x+9} 164 ${x+18} 176V200Z`} fill="#fff2b8"/>)}<path d="M243 45V13L283 26L243 36M132 100V70L167 82L132 94M348 100V70L383 82L348 94" fill="#77f0d5" stroke="#ffe6ae" strokeWidth="2"/><text x="300" y="389" textAnchor="middle" fill="#fff0b7" fontSize="27" fontWeight="bold" letterSpacing="7">CARNIVAL</text></svg>;
+  return gift.icon;
+}
+export default function GiftOverlay({ gifts, onDone }) {
+  const current = gifts[0];
+  const gift = GIFTS.find((item) => item.amount === current?.amount);
+  useEffect(() => {
+    if (!gift) return;
+    const timer = setTimeout(onDone, gift.duration);
+    return () => clearTimeout(timer);
+  }, [current?.id]);
+  if (!gift) return null;
+  return <div key={current.id} className={`gift-stage gift-${gift.kind}`} role="status" aria-label={`${current.nickname} 送出 ${gift.name} ${gift.amount} 點`}>
+    <div className="gift-halo"/><div className="gift-sprite" aria-hidden="true"><GiftArt gift={gift}/></div>
+    <div className="gift-sparkles" aria-hidden="true">{Array.from({ length: gift.amount >= 50 ? 24 : 8 }, (_, i) => <i key={i} style={{ '--i': i }}>{gift.kind === 'rose' ? '🌸' : gift.kind === 'heart' ? '♥' : '✦'}</i>)}</div>
+    <div className="gift-caption"><strong>{current.nickname}</strong><span>送出 {gift.name} · {gift.amount} 點</span></div>
+  </div>;
+}

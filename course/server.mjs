@@ -1,3 +1,4 @@
+import { createOBSControls } from './obs-controls.mjs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -136,7 +137,8 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     },
   });
   const room = createOBSRoom(io, store);
-  function snapshot() { return { ...status, viewers: io.of('/').sockets.size, likes, supportTotal: store.supportTotal(room.state().broadcastId), room: room.state() }; }
+  const obsControls = createOBSControls(io, store, secureTransport);
+  function snapshot() { return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(room.state().broadcastId), room: room.state() }; }
   function broadcast() { io.emit('state', snapshot()); }
   function poll() {
     if (polling) return polling;
@@ -162,6 +164,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   timer.unref();
   void poll();
   io.on('connection', (socket) => {
+    if (socket.handshake.auth?.obsPair) { obsControls.attach(socket); return; }
     socket.data.token = cookieToken(socket.request);
     socket.data.user = secureTransport(socket.request) ? store.session(socket.data.token) : null;
     socket.data.authorized = () => !socket.data.user || Boolean(store.session(socket.data.token));
@@ -171,6 +174,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       if (!user || !secureTransport(socket.request)) throw new Error('請先登入。');
       socket.data.user = user; return user;
     };
+    obsControls.attach(socket, account);
     function handle(event, fn) {
       socket.on(event, (...args) => {
         const ack = args.pop();

@@ -1,3 +1,5 @@
+import { DatabaseSync } from 'node:sqlite';
+import { GIFTS } from '../gifts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -70,4 +72,31 @@ test('ledger pages preserve privacy and do not skip old rows after a new donatio
     assert.equal(store.ledger(store.user(other.id)).scope, 'all');
     assert.equal(store.ledger(store.user(other.id)).reconciliation.balanced, true);
   } finally { store.close(); }
+});
+
+
+test('legacy donation ledger migrates without losing receipts and accepts all six gift tiers', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gift-migrate-')); const path = join(dir, 'live.sqlite');
+  let store = openStore(path);
+  try {
+    const host = await store.register({ username: 'host', nickname: 'Host', password: 'a-long-test-password' });
+    const viewer = store.guest(); const bid = store.start(host.id, viewer.username);
+    const receipt = store.donate(viewer, { amount: 1, requestId: crypto.randomUUID(), broadcastId: bid }, bid);
+    store.close();
+    const db = new DatabaseSync(path);
+    const schema = db.prepare("SELECT sql FROM sqlite_master WHERE name='donations'").get().sql;
+    db.exec('ALTER TABLE donations RENAME TO old_donations');
+    db.exec(schema.replace('1,5,10,25,50,100', '1,5,10'));
+    db.exec('INSERT INTO donations SELECT * FROM old_donations; DROP TABLE old_donations'); db.close();
+    store = openStore(path);
+    assert.equal(store.ledger(host).transactions[0].id, receipt.id);
+    for (const gift of GIFTS) {
+      const sender = store.guest(); const value = { amount: gift.amount, requestId: crypto.randomUUID(), broadcastId: bid };
+      assert.equal(store.donate(sender, value, bid).amount, gift.amount);
+      assert.equal(store.donate(sender, value, bid).duplicate, true);
+      assert.equal(store.user(sender.id).points, 100 - gift.amount);
+    }
+    assert.equal(store.ledger(host).received, 192);
+    assert.throws(() => store.donate(store.guest(), { amount: 101, requestId: crypto.randomUUID(), broadcastId: bid }, bid));
+  } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }
 });

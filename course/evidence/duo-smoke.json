@@ -4,21 +4,21 @@
   "inboundRtp": [
     {
       "kind": "audio",
-      "bytesReceived": 13154
+      "bytesReceived": 12590
     },
     {
       "kind": "video",
-      "bytesReceived": 76247,
-      "framesDecoded": 42
+      "bytesReceived": 77427,
+      "framesDecoded": 41
     },
     {
       "kind": "audio",
-      "bytesReceived": 9410
+      "bytesReceived": 9832
     },
     {
       "kind": "video",
-      "bytesReceived": 69810,
-      "framesDecoded": 20
+      "bytesReceived": 71265,
+      "framesDecoded": 21
     }
   ],
   "checked": [
@@ -38,5 +38,5 @@
   "physicalOBS": false,
   "acousticEchoCancellation": false,
   "crossNetwork": false,
-  "at": "2026-10-22T05:07:20.215Z"
+  "at": "2026-10-22T09:33:57.499Z"
 }

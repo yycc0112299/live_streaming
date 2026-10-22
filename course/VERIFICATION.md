@@ -128,3 +128,11 @@
 - 已重新啟動 Azure VM，網站 `/group9/api/status` 曾回應 HTTP 200，服務可用。
 - 本次實測未能開始：本機沒有建立 SSH RTMP 轉送，且沒有 1935 listener；OBS 雖已開啟，`live` 仍為 `false`，因此沒有可比較的 OBS 螢幕與網站播放螢幕畫面。
 - 已停止 OBS 並關閉 Azure VM；本次不能把結果解讀成有線網路延遲，也不能宣稱測得 2 秒或其他數字。
+
+### 2026-10-22 WebRTC 限時部署測試
+
+- Azure MediaMTX 已啟用 WebRTC；NSG 新增 TCP 8889 與 UDP 8189 入站規則。
+- 部署前網站顯示 HLS，原因是 VM 上的舊版 `server.mjs` 沒有 WHEP 代理路由，且 `/group9/` 資產基底路徑錯誤；已同步目前 repo 的 `server.mjs` 與 `dist`，以 `APP_BASE=/group9/ VITE_WEBRTC=true` 建置。
+- 網站已驗證顯示 `WebRTC · 影音直播`、播放器播放中；WHEP 代理 `OPTIONS` 回 HTTP 204，服務正常。
+- 本次沒有宣稱完整螢幕到螢幕數值：直播畫面內沒有可讀的同步時鐘，因此只確認 WebRTC 播放成功，未把伺服器端邊緣時間當成總延遲。
+- 測試完成後已停止 Azure VM，避免持續產生計算費用；NSG 規則仍保留，VM 下次啟動後可再次測試。

@@ -43,3 +43,31 @@ test('SQLite reopen retains accounts, sessions, balanced ledger, chat deletion, 
     assert.throws(() => store.donate(viewer, { ...value, requestId: crypto.randomUUID() }, broadcastId), /結束/);
   } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('ledger pages preserve privacy and do not skip old rows after a new donation', async () => {
+  const store = openStore(':memory:');
+  try {
+    const make = (username) => store.register({ username, nickname: username, password: 'a-long-test-password' });
+    const host = await make('host'); const sender = await make('sender'); const other = await make('other');
+    store.db.prepare("UPDATE users SET role='host' WHERE id=?").run(host.id);
+    const broadcastId = store.start(host.id, 'sender');
+    const donate = (user) => store.donate(user, { amount: 1, requestId: crypto.randomUUID(), broadcastId }, broadcastId);
+    for (let i = 0; i < 100; i++) donate(sender);
+    for (let i = 0; i < 5; i++) donate(other);
+    const first = store.ledger(host);
+    assert.equal(first.transactions.length, 100); assert.ok(first.nextCursor);
+    donate(other);
+    const second = store.ledger(host, first.nextCursor);
+    assert.equal(second.transactions.length, 5); assert.equal(second.nextCursor, null);
+    assert.equal(new Set([...first.transactions, ...second.transactions].map((row) => row.id)).size, 105);
+    assert.equal(second.received, 106);
+    assert.equal(store.ledger(sender).transactions.length, 100);
+    assert.equal(store.ledger(sender).nextCursor, null);
+    assert.ok(store.ledger(other).transactions.every((row) => row.sender === 'other'));
+    assert.equal(store.ledger(other, first.nextCursor).transactions.length, 0);
+    for (const cursor of ['1', -1, 0, {}, 1.5]) assert.throws(() => store.ledger(sender, cursor));
+    store.db.prepare("UPDATE users SET role='admin' WHERE id=?").run(other.id);
+    assert.equal(store.ledger(store.user(other.id)).scope, 'all');
+    assert.equal(store.ledger(store.user(other.id)).reconciliation.balanced, true);
+  } finally { store.close(); }
+});

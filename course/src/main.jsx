@@ -178,7 +178,7 @@ function App() {
           {error && <p className="error" role="alert">{error}</p>}
         </div>
       </aside></div>
-      <Account key={user?.id || 'guest'} user={user} available={accountsAvailable} onChange={reloadAccount} command={command} onError={onError}/>
+      <Account socket={socket} key={user?.id || 'guest'} user={user} available={accountsAvailable} onChange={reloadAccount} command={command} onError={onError}/>
       {management && <Moderation command={command} onError={onError}/>}
       {error && <p className="error" role="alert">{error}</p>}
       {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="關閉分享提示" onClick={() => setNotice('')}>×</button></div>}

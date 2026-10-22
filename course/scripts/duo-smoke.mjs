@@ -115,15 +115,17 @@ try {
   await guest.getByRole('textbox', { name: '聊天訊息', exact: true }).fill('不應出現'); await guest.getByRole('button', { name: '傳送 ↗', exact: true }).click(); await guest.getByRole('alert').filter({ hasText: '禁言' }).first().waitFor();
   await message.getByRole('button', { name: '刪除', exact: true }).click(); await viewer.locator('.message').filter({ hasText: '雙 OBS 同台測試訊息' }).waitFor({ state: 'detached' });
   await host.getByRole('button', { name: '查看／更新應援帳本', exact: true }).click(); await host.getByText('主播累計收到 10 點', { exact: false }).waitFor();
+  await viewer.getByRole('button', { name: '應援 1', exact: true }).click();
+  await host.getByText('主播累計收到 11 點', { exact: false }).waitFor();
   await viewer.setViewportSize({ width: 390, height: 844 }); await mkdir(new URL('../evidence/', import.meta.url), { recursive: true });
   await viewer.screenshot({ path: fileURLToPath(new URL('../evidence/duo-mobile.png', import.meta.url)), fullPage: true }); assert.equal(await viewer.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await second.stop(); await waitUntil(async () => !(await (await fetch(url + 'api/status')).json()).sources.guest.live);
   await playing(viewer, 1); second = await publish('guest', guestSecret, 'darkgreen', 660); await playing(viewer);
   await host.getByRole('button', { name: '結束本場應援記帳', exact: true }).click(); await first.stop(); await second.stop();
   await viewer.waitForFunction(() => [...document.querySelectorAll('.duo-grid video')].every((v) => v.hidden));
-  await viewer.getByRole('button', { name: '登出', exact: true }).click(); await viewer.getByRole('textbox', { name: '帳號', exact: true }).fill('SmokeViewer'); await viewer.getByLabel('密碼', { exact: true }).fill('smoke-password-12345'); await viewer.getByRole('button', { name: '登入', exact: true }).click(); await viewer.getByText('示範點數：90', { exact: false }).waitFor();
+  await viewer.getByRole('button', { name: '登出', exact: true }).click(); await viewer.getByRole('textbox', { name: '帳號', exact: true }).fill('SmokeViewer'); await viewer.getByLabel('密碼', { exact: true }).fill('smoke-password-12345'); await viewer.getByRole('button', { name: '登入', exact: true }).click(); await viewer.getByText('示範點數：89', { exact: false }).waitFor();
   assert.deepEqual(errors, []);
-  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'UI registration/login/logout', 'persistent balance', 'donation and host ledger', 'announcement', 'mute', 'delete', '390px layout'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
+  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'UI registration/login/logout', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'mute', 'delete', '390px layout'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
   await writeFile(new URL('../evidence/duo-smoke.json', import.meta.url), JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
 } finally {
   for (const context of contexts) await context.close(); await browser?.close(); await app.close();

@@ -4,21 +4,21 @@
   "inboundRtp": [
     {
       "kind": "audio",
-      "bytesReceived": 12963
+      "bytesReceived": 13588
     },
     {
       "kind": "video",
-      "bytesReceived": 79388,
-      "framesDecoded": 47
+      "bytesReceived": 78708,
+      "framesDecoded": 48
     },
     {
       "kind": "audio",
-      "bytesReceived": 9558
+      "bytesReceived": 9607
     },
     {
       "kind": "video",
-      "bytesReceived": 69303,
-      "framesDecoded": 20
+      "bytesReceived": 74491,
+      "framesDecoded": 19
     }
   ],
   "checked": [
@@ -28,7 +28,7 @@
     "host page reload keeps room and streams",
     "UI registration/login/logout",
     "persistent balance",
-    "donation and host ledger",
+    "donation and live host ledger refresh",
     "announcement",
     "mute",
     "delete",
@@ -37,5 +37,5 @@
   "physicalOBS": false,
   "acousticEchoCancellation": false,
   "crossNetwork": false,
-  "at": "2026-10-22T04:07:11.932Z"
+  "at": "2026-10-22T05:05:59.960Z"
 }

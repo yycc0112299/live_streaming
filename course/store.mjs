@@ -130,12 +130,15 @@ export function openStore(path) {
       return get('SELECT * FROM donations WHERE id=?', id);
     });
   }
-  function ledger(actor) {
-    const select = 'SELECT d.id,d.amount,d.request_id AS requestId,d.broadcast_id AS broadcastId,d.created_at AS at,s.username AS sender,r.username AS recipient FROM donations d JOIN users s ON s.id=d.sender_id JOIN users r ON r.id=d.recipient_id';
-    const rows = actor.role === 'admin' ? all(`${select} ORDER BY d.rowid DESC LIMIT 100`) : all(`${select} WHERE d.sender_id=? OR d.recipient_id=? ORDER BY d.rowid DESC LIMIT 100`, actor.id, actor.id);
+  function ledger(actor, before = null) {
+    if (before !== null && (!Number.isSafeInteger(before) || before < 1)) throw new Error('無效的帳本分頁');
+    const select = 'SELECT d.rowid AS cursor,d.id,d.amount,d.request_id AS requestId,d.broadcast_id AS broadcastId,d.created_at AS at,s.username AS sender,r.username AS recipient FROM donations d JOIN users s ON s.id=d.sender_id JOIN users r ON r.id=d.recipient_id';
+    const rows = actor.role === 'admin' ? all(`${select} WHERE d.rowid<? ORDER BY d.rowid DESC LIMIT 101`, before ?? Number.MAX_SAFE_INTEGER) : all(`${select} WHERE (d.sender_id=? OR d.recipient_id=?) AND d.rowid<? ORDER BY d.rowid DESC LIMIT 101`, actor.id, actor.id, before ?? Number.MAX_SAFE_INTEGER);
+    const nextCursor = rows.length > 100 ? rows[99].cursor : null;
+    rows.splice(100);
     const totals = get('SELECT COALESCE(SUM(CASE WHEN sender_id=? THEN amount ELSE 0 END),0) AS sent,COALESCE(SUM(CASE WHEN recipient_id=? THEN amount ELSE 0 END),0) AS received FROM donations', actor.id, actor.id);
     const reconciliation = actor.role === 'admin' ? get('SELECT (SELECT COUNT(*)*100 FROM users) AS granted,(SELECT COALESCE(SUM(points),0) FROM users) AS wallets,(SELECT COALESCE(SUM(amount),0) FROM donations) AS income') : undefined;
-    return { transactions: rows, scope: actor.role === 'admin' ? 'all' : 'own', ...totals, points: user(actor.id).points, ...(reconciliation ? { reconciliation: { ...reconciliation, balanced: reconciliation.granted === reconciliation.wallets + reconciliation.income } } : {}) };
+    return { transactions: rows, nextCursor, scope: actor.role === 'admin' ? 'all' : 'own', ...totals, points: user(actor.id).points, ...(reconciliation ? { reconciliation: { ...reconciliation, balanced: reconciliation.granted === reconciliation.wallets + reconciliation.income } } : {}) };
   }
   function room() {
     const row = get('SELECT * FROM broadcasts WHERE ended_at IS NULL ORDER BY rowid DESC LIMIT 1');

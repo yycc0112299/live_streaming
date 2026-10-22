@@ -2,6 +2,12 @@
 
 依本機 `Group9_英文講稿_2026-10-19.md` 的最終七頁講稿核對，並讀回 GitHub 功能分支。實作範圍是單房 OBS/RTMP/MediaMTX/HLS、React/hls.js、Socket.IO、暱稱、狀態，以及簡報列為選做的按讚與人數。
 
+## 2026-10-23 Azure 公網觀看與加密推流
+
+既有 Azure VM `B11302133` 已設定 DNS `group9liveb11302133.japaneast.cloudapp.azure.com`。NSG 新增 TCP 443 公開 HTTPS，並新增 TCP 1936 RTMPS，來源限制為當時主播公開 IP `101.14.11.195/32`。Let's Encrypt 憑證已由 Certbot 申請並部署到 Apache，期限至 2027-01-20，並啟用自動續期。
+
+MediaMTX 設定備份後改為 TLS strict 並監聽 `*:1936`；公開 API、HLS 上游及 Node 管理埠仍維持 loopback。從本機驗證 HTTPS 443 與 RTMPS 1936 可連線，`https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/api/status` 回應 HTTP 200。這次使用 Azure Run Command，未建立 SSH 金鑰。尚未用手機行動網路播放或用 OBS 實際 RTMPS 推流驗收；第二台主播換網路後需新增來源 CIDR。
+
 ## 已通過
 
 - Windows Node.js 24.18.0：課程版 `npm test` 5/5；原本根目錄 demo 6/6。

@@ -123,7 +123,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       let body;
       try { body = await readFile(file); }
       catch { return res.writeHead(404).end('Not found. Run npm run build first.'); }
-      res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream' });
+      res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream', ...(url.pathname.startsWith('/assets/') ? { 'Cache-Control': 'public, max-age=31536000, immutable' } : {}) });
       res.end(req.method === 'HEAD' ? undefined : body);
     } catch {
       if (!res.headersSent) res.writeHead(502).end('Streaming service unavailable');

@@ -4,21 +4,21 @@
   "inboundRtp": [
     {
       "kind": "audio",
-      "bytesReceived": 13588
+      "bytesReceived": 13154
     },
     {
       "kind": "video",
-      "bytesReceived": 78708,
-      "framesDecoded": 48
+      "bytesReceived": 76247,
+      "framesDecoded": 42
     },
     {
       "kind": "audio",
-      "bytesReceived": 9607
+      "bytesReceived": 9410
     },
     {
       "kind": "video",
-      "bytesReceived": 74491,
-      "framesDecoded": 19
+      "bytesReceived": 69810,
+      "framesDecoded": 20
     }
   ],
   "checked": [
@@ -30,6 +30,7 @@
     "persistent balance",
     "donation and live host ledger refresh",
     "announcement",
+    "report and resolution",
     "mute",
     "delete",
     "390px layout"
@@ -37,5 +38,5 @@
   "physicalOBS": false,
   "acousticEchoCancellation": false,
   "crossNetwork": false,
-  "at": "2026-10-22T05:05:59.960Z"
+  "at": "2026-10-22T05:07:20.215Z"
 }

@@ -111,6 +111,13 @@ try {
   await host.reload(); await playing(host); await host.getByText('本場主持人：SmokeHost', { exact: false }).waitFor();
   await host.getByRole('button', { name: '載入／更新管理面板', exact: true }).click(); await host.getByLabel('置頂公告', { exact: true }).fill('同台管理測試公告'); await host.getByRole('button', { name: '儲存聊天室規則', exact: true }).click();
   await viewer.getByText('📌 同台管理測試公告', { exact: true }).waitFor();
+  viewer.once('dialog', (dialog) => dialog.accept('Smoke report reason'));
+  await viewer.locator('.message').filter({ hasText: '雙 OBS 同台測試訊息' }).getByRole('button', { name: '檢舉', exact: true }).click();
+  await viewer.getByText('檢舉已送出', { exact: true }).waitFor();
+  await host.getByRole('button', { name: '載入／更新管理面板', exact: true }).click();
+  await host.getByText('原因：Smoke report reason', { exact: true }).waitFor();
+  await host.getByRole('button', { name: '標記已處理', exact: true }).click();
+  await host.getByText('目前沒有待處理檢舉。', { exact: true }).waitFor();
   const message = host.locator('.message').filter({ hasText: '雙 OBS 同台測試訊息' }); await message.getByRole('button', { name: '禁言', exact: true }).click();
   await guest.getByRole('textbox', { name: '聊天訊息', exact: true }).fill('不應出現'); await guest.getByRole('button', { name: '傳送 ↗', exact: true }).click(); await guest.getByRole('alert').filter({ hasText: '禁言' }).first().waitFor();
   await message.getByRole('button', { name: '刪除', exact: true }).click(); await viewer.locator('.message').filter({ hasText: '雙 OBS 同台測試訊息' }).waitFor({ state: 'detached' });
@@ -125,7 +132,7 @@ try {
   await viewer.waitForFunction(() => [...document.querySelectorAll('.duo-grid video')].every((v) => v.hidden));
   await viewer.getByRole('button', { name: '登出', exact: true }).click(); await viewer.getByRole('textbox', { name: '帳號', exact: true }).fill('SmokeViewer'); await viewer.getByLabel('密碼', { exact: true }).fill('smoke-password-12345'); await viewer.getByRole('button', { name: '登入', exact: true }).click(); await viewer.getByText('示範點數：89', { exact: false }).waitFor();
   assert.deepEqual(errors, []);
-  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'UI registration/login/logout', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'mute', 'delete', '390px layout'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
+  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'UI registration/login/logout', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'report and resolution', 'mute', 'delete', '390px layout'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
   await writeFile(new URL('../evidence/duo-smoke.json', import.meta.url), JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
 } finally {
   for (const context of contexts) await context.close(); await browser?.close(); await app.close();

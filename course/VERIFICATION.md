@@ -159,3 +159,4 @@
 - 收尾已還原 OBS 原始來源與靜音狀態、移除測試 AEC source、停止本次 AEC service；沒有安裝音訊核心驅動、變更 Windows 預設音訊、防毒排除或開機啟動。未啟動／修改 Azure VM。
 
 未完成的實際交付門檻：第二台 Windows 配置、兩台真實 OBS 推流、兩台喇叭開啟的單講／雙講／移動與音量測試、第三觀看端獨立聽音、長時間穩定度與跨網路；本分支也尚未部署 Azure。公開帳號必須先有 HTTPS。尚不能宣稱兩台完全免耳機且零回音，也不能以本機合成數據保證真實延遲。
+補充：已對上游 LiteRT 呼叫加上錯誤標記；注入推論故障的測試確認即使上游內部選擇 passthrough，bridge 仍會停止輸出，不將原始麥克風送回直播。重跑 AEC 合成、Browser Source 與還原／停服測試通過。GitHub PR #2 的 Linux 測試、建置、Compose 設定與 Docker image 建置亦通過。

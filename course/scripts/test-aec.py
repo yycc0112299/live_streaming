@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+from aec_guard import guard_inference
 
 root = Path(__file__).resolve().parents[1]
 upstream = root / '.runtime/aec/web/AEC-Web-v1.13.1-win64'
@@ -41,6 +42,7 @@ def process(mic, ref, engine='dtln'):
     if engine != 'dtln':
         assert chain.set_engine(engine), chain.last_error
     assert chain.start(), chain.last_error
+    guard_inference(chain)
     assert chain.state()['dtlnBackend'] > 0, 'AEC models must load; passthrough is a failure'
     output = []
     for i in range(0, len(mic), FRAME_SIZE):
@@ -57,6 +59,16 @@ def energy(signal):
 
 
 start = time.perf_counter()
+failed = Chain(model_dir='models', num_threads=2)
+failed.set_ns_backend('off')
+assert failed.start(), failed.last_error
+def broken_inference():
+    raise RuntimeError('injected inference failure')
+failed.dtln.pair.i1.invoke = broken_inference
+guard_inference(failed)
+failed.process_frame(np.ones(FRAME_SIZE, dtype=np.int16) * 1000, np.ones(FRAME_SIZE, dtype=np.int16) * 500)
+assert 'raw microphone output is blocked' in failed.last_error
+failed.stop()
 cancelled = process(echo, reference)
 without_reference = process(echo, np.zeros_like(reference))
 near_output = process(near, np.zeros_like(reference))
@@ -78,6 +90,7 @@ result = {
     'elapsedSeconds': round(time.perf_counter() - start, 2),
     'physicalSpeakersAndMicrophones': False,
     'twoComputerNoHeadphonesAcceptance': False,
+    'inferenceFailureBlocked': True,
 }
 print(json.dumps(result, indent=2))
 assert np.isfinite(double_talk).all()

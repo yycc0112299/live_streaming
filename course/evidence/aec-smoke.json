@@ -6,8 +6,9 @@
   "nearOnlyGainDb": -0.19,
   "doubleTalkNearSignalCorrelation": 0.939,
   "secondsProcessed": 48,
-  "elapsedSeconds": 1.98,
+  "elapsedSeconds": 1.95,
   "physicalSpeakersAndMicrophones": false,
   "twoComputerNoHeadphonesAcceptance": false,
+  "inferenceFailureBlocked": true,
   "passed": true
 }

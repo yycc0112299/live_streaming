@@ -11,6 +11,7 @@ from http import HTTPStatus
 from pathlib import Path
 
 import numpy as np
+from aec_guard import guard_inference
 from websockets import State
 from websockets.sync.server import serve
 
@@ -119,6 +120,7 @@ def main():
     chain.set_ns_backend('off')
     if not chain.start() or chain.state()['dtlnBackend'] == 0:
         raise RuntimeError(chain.last_error or 'AEC model unavailable')
+    guard_inference(chain)
     chain.stop()
     token = secrets.token_hex(24)
     origin = f'http://127.0.0.1:{args.port}'

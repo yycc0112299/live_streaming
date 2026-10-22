@@ -1,5 +1,11 @@
 # Group 9 — 課程最終實作
 
+## 2026-10-22 雙 OBS／帳號／管理／應援更新
+
+目前版本改為固定兩台 OBS，各自發布 `live`、`guest`，同一網頁同時觀看兩人。新增 SQLite 註冊／登入、每帳號首次點數、應援帳本與防重送、公告／刪訊息／禁言／檢舉／慢速模式及管理稽核。免耳機路徑重用開源 AEC Client，透過本機 WASAPI 與 OBS Browser Source，不安裝虛擬音訊驅動。完整啟動、權限、備份與限制見 **[DUAL_OBS.md](DUAL_OBS.md)**。
+
+此更新尚未部署到 Azure；兩台實體 OBS、喇叭同開及獨立聽音仍待驗收。下方單主播／暱稱暫存描述為原始版本紀錄，帳號與雙來源配置以新指南為準。
+
 已部署的課程展示入口：[Cloud Live](http://20.89.110.14/group9/)。測試彩條結束後會顯示 OFFLINE，需由 OBS 開播才有影音。實際驗證範圍見 [VERIFICATION.md](VERIFICATION.md)。
 
 依 `Group9_英文講稿_2026-10-19.md` 的七頁內容實作：**OBS → RTMP → MediaMTX → HLS → React / hls.js**；聊天用 **Node.js / Socket.IO**。一間房、一位主播，影音與聊天分流。原本根目錄 WebRTC demo 與 `site/` LiveKit 版本保留。

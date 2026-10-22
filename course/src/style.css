@@ -1,4 +1,5 @@
 :root {
+  --muted:#9ba7b9; --line:#303949; --surface:#151c29; --ink:#e8edf7;
   font-family:Inter,"Segoe UI","Microsoft JhengHei",sans-serif;
   color:#e8edf7;
   background:#0c1019;
@@ -579,3 +580,28 @@ footer {
     display:none
   }
 }
+.duo-section { padding:48px 16px 16px; }
+.duo-section h2 { font-size:18px; margin:0; }
+.source-name { position:absolute; bottom:4px; left:6px; background:#101924e8; padding:2px 6px; font-size:12px; }
+.duo-grid .player { aspect-ratio:4/3; min-width:0; }
+.duo-grid .offline { padding:12px; }
+.duo-grid .offline h2 { font-size:15px; }
+.checklist { max-width:450px; }
+.checklist input { align-self:start; }
+.muted { color:#9ba7b9; font-size:12px; }
+.duo-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:12px 0; }
+.duo-controls,.inline-form { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:10px 0; }
+.duo-controls button { font-size:12px; padding:7px 10px; }
+.account-panel,.management { margin-top:24px; border:1px solid #293141; border-radius:14px; padding:20px; background:#121824; overflow-wrap:anywhere; }
+.account-panel h2,.management h2 { font-size:18px; margin:0 0 10px; }
+.account-form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
+.account-form label,.inline-form label { display:flex; flex-direction:column; gap:4px; font-size:12px; }
+.account-form input,.inline-form input { border:1px solid #384457; padding:8px; border-radius:6px; background:#0c121e; color:#e8edf7; max-width:100%; min-width:0; }
+.announcement { padding:12px 18px; background:#273b37; font-size:13px; overflow-wrap:anywhere; }
+.message-tools { display:flex; flex-wrap:wrap; gap:6px; }
+.message-tools button { font-size:11px; padding:2px 6px; }
+.table-scroll { overflow:auto; }
+.ledger table { border-collapse:collapse; font-size:12px; width:100%; }
+.ledger td,.ledger th { text-align:left; border-bottom:1px solid #303949; padding:8px; }
+.management article { border-bottom:1px solid #303949; padding:12px 0; }
+@media(max-width:480px) { .duo-grid { grid-template-columns:1fr; } .account-form { flex-direction:column; align-items:stretch; } }

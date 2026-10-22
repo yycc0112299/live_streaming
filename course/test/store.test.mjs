@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { openStore } from '../store.mjs';
+
+test('SQLite reopen retains accounts, sessions, balanced ledger, chat deletion, mutes and moderation audit', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'group9-store-'));
+  const path = join(dir, 'live.sqlite'); let store = openStore(path);
+  try {
+    const host = await store.register({ username: 'host', nickname: 'Host', password: 'a-long-test-password' });
+    const viewer = await store.register({ username: 'viewer', nickname: 'Viewer', password: 'a-long-test-password' });
+    store.db.prepare("UPDATE users SET role='host' WHERE id=?").run(host.id); host.role = 'host';
+    const token = store.newSession(viewer.id); const broadcastId = store.start(host.id, 'viewer');
+    const value = { amount: 10, requestId: crypto.randomUUID(), broadcastId };
+    store.donate(viewer, value, broadcastId);
+    const message = store.sendChat(viewer, 'persistent message');
+    store.moderate(host, { action: 'delete', messageId: message.id });
+    store.moderate(host, { action: 'mute', userId: viewer.id, minutes: 10 });
+    store.moderate(host, { action: 'settings', announcement: 'persist this', slowSeconds: 5, words: ['testword'] });
+    // A failing transaction must leave both balance and ledger unchanged.
+    store.db.exec("CREATE TRIGGER fail_donation BEFORE INSERT ON donations BEGIN SELECT RAISE(ABORT,'forced failure'); END;");
+    assert.throws(() => store.donate(viewer, { ...value, requestId: crypto.randomUUID() }, broadcastId), /forced failure/);
+    store.db.exec('DROP TRIGGER fail_donation');
+    store.close(); store = openStore(path);
+    assert.equal(store.session(token).id, viewer.id);
+    assert.equal(store.room().broadcastId, broadcastId); assert.equal(store.room().guest.userId, viewer.id);
+    assert.equal((await store.login({ username: 'VIEWER', password: 'a-long-test-password' })).points, 90);
+    assert.equal(store.ledger(host).received, 10); assert.equal(store.ledger(viewer).sent, 10);
+    assert.equal(store.user(host.id).points + store.user(viewer.id).points + store.ledger(host).received, 200);
+    store.db.prepare("UPDATE users SET role='admin' WHERE id=?").run(host.id);
+    const adminLedger = store.ledger(store.user(host.id));
+    assert.equal(adminLedger.scope, 'all'); assert.equal(adminLedger.transactions.length, 1); assert.equal(adminLedger.reconciliation.balanced, true);
+    assert.equal(store.history().length, 0); assert.equal(store.audit().length, 3);
+    assert.equal(store.settings().announcement, 'persist this');
+    assert.throws(() => store.sendChat(viewer, 'try after restart'), /禁言/);
+    assert.equal(store.donate(viewer, value, broadcastId).duplicate, true);
+    const row = store.db.prepare('SELECT password,salt FROM users WHERE id=?').get(viewer.id);
+    assert.notEqual(row.password, 'a-long-test-password'); assert.equal(row.salt.length, 32);
+    assert.notEqual(store.db.prepare('SELECT token FROM sessions').get().token, token);
+    store.end(broadcastId);
+    assert.throws(() => store.donate(viewer, { ...value, requestId: crypto.randomUUID() }, broadcastId), /結束/);
+  } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }
+});

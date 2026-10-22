@@ -14,6 +14,7 @@ for port in 4180 1935 8888 9997; do
 done
 if ! command -v curl >/dev/null || ! command -v xz >/dev/null; then apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates xz-utils; fi
 mkdir -p "$base/runtime" "$base/shared"
+chmod 700 "$base/shared"
 cd "$base/runtime"
 node_version=24.18.0
 node_archive="node-v$node_version-linux-$node_arch.tar.xz"
@@ -34,8 +35,8 @@ fi
 export PATH="$base/runtime/node-v$node_version-linux-$node_arch/bin:$PATH"
 cd "$app_dir"
 if [ ! -e .runtime ]; then ln -s "$base/shared" .runtime; fi
-node scripts/configure.mjs
-"$base/runtime/mediamtx/mediamtx" --validate-conf=.runtime/mediamtx.yml
+node scripts/configure.mjs --duo
+"$base/runtime/mediamtx/mediamtx" --validate-conf=.runtime/mediamtx.duo.yml
 npm ci --no-audit --no-fund
 npm test
 npm run build
@@ -48,7 +49,7 @@ After=network.target
 [Service]
 User=group9-live
 WorkingDirectory=$app_dir
-ExecStart=$base/runtime/mediamtx/mediamtx $base/shared/mediamtx.yml
+ExecStart=$base/runtime/mediamtx/mediamtx $base/shared/mediamtx.duo.yml
 Restart=on-failure
 NoNewPrivileges=true
 ProtectHome=true
@@ -65,6 +66,8 @@ User=group9-live
 WorkingDirectory=$app_dir
 Environment=HOST=127.0.0.1
 Environment=PORT=4180
+Environment=DB_PATH=$base/shared/live.sqlite
+EnvironmentFile=-$base/shared/app.env
 ExecStart=$base/runtime/node-v$node_version-linux-$node_arch/bin/node $app_dir/server.mjs
 Restart=on-failure
 NoNewPrivileges=true

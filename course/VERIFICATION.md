@@ -143,3 +143,19 @@
 - 同步截圖讀值：來源 `11:09:58.901`；網站直播畫面內的時鐘 `11:09:58.344`。
 - 估算端到端延遲：`0.557 秒`（約 557 ms；截圖與讀值誤差約數十毫秒）。
 - 這是 WebRTC 實測，不是先前 HLS 約 2 秒的結果。
+## 2026-10-22 固定雙 OBS、帳號、聊天室管理與 AEC（本分支）
+
+使用者確認兩台固定電腦各用 OBS，並新增「兩台開喇叭、不戴耳機」要求。最新操作規格見 `DUAL_OBS.md`；舊單主播／每連線點數描述由本節取代。
+
+- Node.js 24.18.0：課程版 `npm test` 14/14；原根目錄 demo 6/6。
+- 正式 HLS 與 WebRTC 建置均成功；既有 hls.js/Vite 大 bundle 提醒仍存在。
+- 雙來源設定經真實 MediaMTX 1.21.2 `--validate-conf` 通過。第一台 `live` 密鑰保留，第二台 `guest_broadcaster` 僅能發到 `guest`，兩路都不允許覆蓋 publisher。
+- 三個獨立網站瀏覽器環境及兩個獨立合成 WHIP sender，實際經 MediaMTX 與兩個 WHEP reader，在同一頁收到 H.264/Opus 雙路影音；兩路持續播放，讀回各自 RTP audio bytes / decoded video frames。測試包含停／重開第二路、主持人網頁重新整理不丟場次、註冊登入登出、餘額重開後仍為 90、應援及主播收入帳本、公告／禁言／刪除、390px 無橫向溢出。證據：`evidence/duo-smoke.json`、`evidence/duo-mobile.png`。這不是兩台實體 OBS 或公網驗收。
+- SQLite 關閉重開仍保留帳號、salted 密碼驗證、hashed sessions、餘額、場次及兩人身份、交易／收入、訊息刪除、禁言、規則與稽核。測試用觸發器故意令交易寫入失敗，確認扣點也全部回滾；重送不重複扣點，併發不能超額，自送被拒，管理員核帳平衡。
+- AEC 直接使用 `samudinzul/aec-client` v1.13.1 / `f76ed632649723003e8778661d565523bdbd5732` 的 DTLN-AEC 引擎、模型及 WASAPI pipeline。Web release SHA-256 `2b17531a7ec5e619f4213b686be0c8fb6d3c54537e666878164d73914875282d` 已核對。Python 3.10.6、numpy 2.2.6、ai-edge-litert 2.3.0、pyaudiowpatch 0.2.12.9、websockets 16.1.1。
+- 12 秒合成參考／延遲多路徑回音、近端人聲類訊號與雙講：測得回音能量降低 51.69 dB，正確參考較無參考改善 51.46 dB；近端單獨訊號增益 -0.19 dB，雙講近端相關係數 0.939。這是特定合成 fixture，不能外推實際房間。證據 `evidence/aec-smoke.json`。
+- 免驅動本機 bridge 經 WebSocket／AudioWorklet 到真正 OBS Browser Source；已讀回 reroute_audio、關閉本機監聽，並從 OBS 讀到合成 AEC 輸出電平。測試拒絕錯誤私有路徑、失聯靜音與 PCM 溢位；原本 raw mic 靜音避免雙重收音。證據 `evidence/aec-bridge-smoke.json`、`evidence/aec-obs-smoke.json`。
+- 本機真實 Realtek 麥克風及實際喇叭 loopback 短測：AEC frame 持續處理並進 OBS，未啟動錄影／推流、未播放校正聲；當時喇叭參考能量為 0，故只證明實際輸入能開啟，不證明聲學消除效果。證據 `evidence/aec-local-capture.json`。
+- 收尾已還原 OBS 原始來源與靜音狀態、移除測試 AEC source、停止本次 AEC service；沒有安裝音訊核心驅動、變更 Windows 預設音訊、防毒排除或開機啟動。未啟動／修改 Azure VM。
+
+未完成的實際交付門檻：第二台 Windows 配置、兩台真實 OBS 推流、兩台喇叭開啟的單講／雙講／移動與音量測試、第三觀看端獨立聽音、長時間穩定度與跨網路；本分支也尚未部署 Azure。公開帳號必須先有 HTTPS。尚不能宣稱兩台完全免耳機且零回音，也不能以本機合成數據保證真實延遲。

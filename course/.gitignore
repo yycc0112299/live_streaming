@@ -4,3 +4,8 @@ dist/
 .runtime/
 *.log
 deploy/*.private.yml
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+__pycache__/
+*.pyc

@@ -3,7 +3,7 @@ services:
     image: bluenviron/mediamtx:1.21.2
     restart: unless-stopped
     volumes:
-      - ./mediamtx.private.yml:/mediamtx.yml:ro
+      - ./mediamtx.duo.private.yml:/mediamtx.yml:ro
     ports:
       - "127.0.0.1:1935:1935"
     networks: [live]
@@ -17,6 +17,9 @@ services:
       PORT: 4180
       MEDIAMTX_API_URL: http://media:9997
       MEDIAMTX_HLS_URL: http://media:8888
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+    volumes:
+      - accounts:/app/data
     ports:
       - "127.0.0.1:4180:4180"
     depends_on: [media]
@@ -27,3 +30,5 @@ networks:
     ipam:
       config:
         - subnet: 172.30.9.0/24
+volumes:
+  accounts:

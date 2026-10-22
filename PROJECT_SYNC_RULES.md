@@ -26,8 +26,8 @@ Repository：`yycc0112299/live_streaming`
 ## 目前同步基準
 
 - 正式 repository：`https://github.com/yycc0112299/live_streaming`
-- 目前同步分支：`feature/course-final`
-- 最近同步 commit：`a246223`
+- 本次功能分支：`feature/duo-accounts-moderation`（雙 OBS、帳號、聊天室管理、應援與 AEC）
+- 先前同步基準：`a246223`；本次遠端 commit 以 Pull Request／Git log 為準。
 
 ## 專案邊界
 

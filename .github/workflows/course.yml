@@ -26,3 +26,11 @@ jobs:
       - run: node scripts/configure.mjs --docker --duo
       - run: docker compose -f deploy/compose.yml config --quiet
       - run: docker build -f deploy/Dockerfile .
+      - run: docker build -f deploy/Dockerfile --build-arg APP_BASE=/group9/ --build-arg VITE_WEBRTC=true -t group9-webrtc-check .
+      - name: Verify Docker build options reach the served frontend
+        run: >-
+          docker run --rm group9-webrtc-check node --input-type=module -e
+          "import {readFileSync,readdirSync} from 'node:fs'; import assert from 'node:assert/strict';
+          assert.match(readFileSync('dist/index.html','utf8'), /group9\/assets\//);
+          const js=readdirSync('dist/assets').filter(f=>f.endsWith('.js')).map(f=>readFileSync('dist/assets/'+f,'utf8')).join('');
+          assert.ok(js.includes('/whep'), 'WebRTC player missing from built image');"

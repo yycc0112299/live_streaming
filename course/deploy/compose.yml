@@ -11,12 +11,16 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+      args:
+        APP_BASE: ${APP_BASE:-/}
+        VITE_WEBRTC: ${VITE_WEBRTC:-false}
     restart: unless-stopped
     environment:
       HOST: 0.0.0.0
       PORT: 4180
       MEDIAMTX_API_URL: http://media:9997
       MEDIAMTX_HLS_URL: http://media:8888
+      MEDIAMTX_WEBRTC_URL: http://media:8889
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
     volumes:
       - accounts:/app/data

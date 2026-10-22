@@ -4,6 +4,9 @@ COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY index.html vite.config.js ./
 COPY src ./src
+ARG APP_BASE=/
+ARG VITE_WEBRTC=false
+ENV APP_BASE=$APP_BASE VITE_WEBRTC=$VITE_WEBRTC
 RUN npm run build
 
 FROM node:24-bookworm-slim

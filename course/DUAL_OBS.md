@@ -87,3 +87,9 @@ AEC 查核另看了 [LocalVQE](https://github.com/localai-org/LocalVQE)（Apache
 執行 `powershell -File scripts/package-aec.ps1` 產生 `.runtime/exports/OBS-AEC-Second-PC-<commit>.zip`；包內 `SECOND_PC.md` 列出第二台所需的 Python、Node 與 OBS 步驟。僅以白名單收錄程式／說明／授權，逐檔與 ZIP 讀回 SHA-256 核對；不含既有憑證、帳號、資料庫、音訊或第一台的 venv。`MANIFEST.json` 記錄來源 commit 與工作樹是否有未提交修改。
 
 `scripts/calibrate-aec.py` 可用實際喇叭與麥克風做 6 秒低音量校正，原始聲音只在記憶體分析，不寫成錄音。使用前須停止推流／錄影，並確認參考對應到實際播放裝置；`--self-test` 只測計算、不開啟聲音。測試回灌訊號不足時輸出 `inconclusive`，不能解讀為通過。完整雙機單講／雙講聽音仍是必要驗收。
+
+### 2026-10-22 Docker 建置選項修正
+
+Docker Compose 現在將 `APP_BASE`（預設 `/`）與 `VITE_WEBRTC`（預設 `false`）傳入前端建置；修改後必須執行 `docker compose -f deploy/compose.yml up -d --build`。WHEP 代理的容器內上游指定為 `http://media:8889`，不能指向 web 容器自己的 localhost。CI 另建 `/group9/` + WebRTC 映像並檢查實際輸出資產。
+
+這只補齊建置與容器代理設定；預設 MediaMTX 配置仍是 HLS，啟用公網 WebRTC 還需配置媒體服務的 WebRTC、ICE 位址與 UDP/TURN。子路徑部署仍須反向代理移除 `/group9/` 前綴（包含 Socket.IO），目前 root Caddyfile 適用 `/`。未對 Azure 作部署變更。

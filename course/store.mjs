@@ -40,11 +40,16 @@ export function openStore(path) {
     try { const value = fn(); db.exec('COMMIT'); return value; }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   };
-  function user(id) { return get('SELECT id,username,nickname,role,points FROM users WHERE id=?', id); }
+  function user(id) { return get("SELECT id,username,nickname,role,points,(password='') AS isGuest FROM users WHERE id=?", id); }
   function session(token) {
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return null;
     const row = get('SELECT user_id FROM sessions WHERE token=? AND expires>?', hash(token), Date.now());
     return row ? user(row.user_id) : null;
+  }
+  function guest() {
+    const id = randomUUID();
+    run('INSERT INTO users(id,username,nickname,password,salt,created_at) VALUES(?,?,?,?,?,?)', id, `visitor-${id}`, `訪客${id.slice(0, 6)}`, '', '', new Date().toISOString());
+    return user(id);
   }
   async function register({ username, password, nickname } = {}) {
     if (typeof username !== 'string' || !/^[a-zA-Z0-9_]{3,24}$/.test(username)) throw new Error('帳號需為 3–24 個英文字母、數字或底線。');
@@ -59,7 +64,7 @@ export function openStore(path) {
   }
   async function login({ username, password } = {}) {
     if (typeof username !== 'string' || typeof password !== 'string' || password.length > 128) throw new Error('帳號或密碼錯誤。');
-    const row = get('SELECT * FROM users WHERE username=?', username.toLowerCase());
+    const row = get("SELECT * FROM users WHERE username=? AND password<>''", username.toLowerCase());
     const key = await derive(password, row?.salt || 'missing-user-salt', 64, passwordOptions);
     if (!row || !timingSafeEqual(key, Buffer.from(row.password, 'hex'))) throw new Error('帳號或密碼錯誤。');
     return user(row.id);
@@ -144,7 +149,7 @@ export function openStore(path) {
     const row = get('SELECT * FROM broadcasts WHERE ended_at IS NULL ORDER BY rowid DESC LIMIT 1');
     return row ? { broadcastId: row.id, host: { userId: row.host_id, nickname: user(row.host_id).nickname, path: 'live' }, guest: row.guest_id ? { userId: row.guest_id, nickname: user(row.guest_id).nickname, path: 'guest' } : null } : { broadcastId: null, host: null, guest: null };
   }
-  return { db, user, register, login, session, newSession, settings, history, sendChat, moderate, report, donate, ledger, room,
+  return { db, user, guest, register, login, session, newSession, settings, history, sendChat, moderate, report, donate, ledger, room,
     logout: (token) => run('DELETE FROM sessions WHERE token=?', hash(token || '')),
     rename: (id, name) => { const nickname = checkText(name, 24, '暱稱'); run('UPDATE users SET nickname=? WHERE id=?', nickname, id); return nickname; },
     start: (id, guestUsername) => transaction(() => {

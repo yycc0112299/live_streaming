@@ -93,3 +93,7 @@ AEC 查核另看了 [LocalVQE](https://github.com/localai-org/LocalVQE)（Apache
 Docker Compose 現在將 `APP_BASE`（預設 `/`）與 `VITE_WEBRTC`（預設 `false`）傳入前端建置；修改後必須執行 `docker compose -f deploy/compose.yml up -d --build`。WHEP 代理的容器內上游指定為 `http://media:8889`，不能指向 web 容器自己的 localhost。CI 另建 `/group9/` + WebRTC 映像並檢查實際輸出資產。
 
 這只補齊建置與容器代理設定；預設 MediaMTX 配置仍是 HLS，啟用公網 WebRTC 還需配置媒體服務的 WebRTC、ICE 位址與 UDP/TURN。子路徑部署仍須反向代理移除 `/group9/` 前綴（包含 Socket.IO），目前 root Caddyfile 適用 `/`。未對 Azure 作部署變更。
+
+### 最新訪客規則（2026-10-22，取代上方觀眾登入要求）
+
+觀眾不用帳號密碼，進站自動領 100 示範點數並能聊天／應援；改暱稱是選用。主播與管理員仍可展開登入面板管理直播。相同瀏覽器 session 保留餘額，重新整理不補發；Cookie 過期（7 天）、清除、無痕或換瀏覽器會取得新訪客身份。SQLite 帳本與管理權限保留。應援需先有主播開啟的記帳場次。

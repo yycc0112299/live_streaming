@@ -41,7 +41,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
         if (!sameOrigin(req) || req.headers['sec-fetch-site'] === 'cross-site') return json(res, 403, { error: '拒絕跨網站帳號操作。' });
         const action = url.pathname.slice('/api/account/'.length);
         if (req.method === 'GET' && action === 'me') return json(res, 200, { user: secureTransport(req) ? store.session(cookieToken(req)) || null : null, accountsAvailable: secureTransport(req) });
-        if (req.method !== 'POST' || !['register', 'login', 'logout'].includes(action)) return json(res, 405, { error: '不支援此操作。' });
+        if (req.method !== 'POST' || !['register', 'login', 'logout', 'guest'].includes(action)) return json(res, 405, { error: '不支援此操作。' });
         if (!secureTransport(req)) return json(res, 403, { error: '帳號登入需要 HTTPS；本機 localhost 可用 HTTP 測試。' });
         const token = cookieToken(req);
         if (action === 'logout') {
@@ -59,7 +59,9 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
         authActive++;
         try {
           const payload = await readJson(req);
-          const user = await store[action](payload);
+          const existing = action === 'guest' ? store.session(token) : null;
+          if (existing) return json(res, 200, { user: existing });
+          const user = action === 'guest' ? store.guest() : await store[action](payload);
           store.logout(token);
           for (const socket of io.sockets.sockets.values()) if (token && socket.data.token === token) socket.disconnect(true);
           setCookie(res, store.newSession(user.id));

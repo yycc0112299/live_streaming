@@ -243,3 +243,22 @@ test('foreign browser origins cannot create a chat connection', async (t) => {
   const [error] = await once(socket, 'connect_error');
   assert.ok(error); assert.equal(socket.connected, false);
 });
+
+test('visitors get 100 points without registration and cannot refill an existing session', async (t) => {
+  const s = await setup(t);
+  const enter = (cookie = '') => fetch(s.url + '/api/account/guest', { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: '{}' });
+  const first = await enter(); assert.equal(first.status, 200);
+  const cookie = first.headers.get('set-cookie').split(';')[0];
+  const { user } = await first.json(); assert.equal(user.points, 100); assert.equal(user.isGuest, 1); assert.equal(user.role, 'viewer');
+  const { socket: host } = await member(t, s, 'Host', 'host');
+  const { broadcastId } = await emit(host, 'room:start', { guestUsername: user.username, audioChecklist: true });
+  s.live(true); await s.app.poll();
+  const visitor = await client(t, s.url, { extraHeaders: { Cookie: cookie } });
+  assert.equal((await emit(visitor, 'donate', { amount: 10, broadcastId, requestId: crypto.randomUUID() })).points, 90);
+  const again = await enter(cookie); assert.equal((await again.json()).user.points, 90); assert.equal(again.headers.get('set-cookie'), null);
+  const me = await fetch(s.url + '/api/account/me', { headers: { Cookie: cookie } }); assert.equal((await me.json()).user.id, user.id);
+  const other = await enter(); assert.notEqual((await other.json()).user.id, user.id);
+  assert.ok((await emit(visitor, 'chat:review')).error);
+  await assert.rejects(s.app.store.login({ username: user.username, password: 'anything' }), /帳號或密碼錯誤/);
+  const foreign = await fetch(s.url + '/api/account/guest', { method: 'POST', headers: { Origin: 'https://foreign.example', 'Content-Type': 'application/json' }, body: '{}' }); assert.equal(foreign.status, 403);
+});

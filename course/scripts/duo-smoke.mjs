@@ -81,11 +81,9 @@ try {
     if (role) app.store.db.prepare('UPDATE users SET role=? WHERE username=?').run(role, username.toLowerCase());
     const tab = await context.newPage(); tab.on('pageerror', (error) => errors.push(error.message)); await tab.goto(url);
     if (username === 'SmokeViewer') {
-      await tab.getByRole('button', { name: '註冊新帳號', exact: true }).click();
-      await tab.getByRole('textbox', { name: '帳號', exact: true }).fill(username);
-      await tab.getByRole('textbox', { name: '暱稱', exact: true }).fill(username);
-      await tab.getByLabel('密碼', { exact: true }).fill('smoke-password-12345');
-      await tab.getByRole('button', { name: '建立帳號', exact: true }).click();
+      await tab.getByText('（免登入訪客）', { exact: false }).waitFor();
+      await tab.getByLabel('新暱稱', { exact: true }).fill(username);
+      await tab.getByRole('button', { name: '更新暱稱', exact: true }).click();
     }
     await tab.getByText(`以 ${username}`, { exact: false }).first().waitFor(); return tab;
   }
@@ -130,9 +128,9 @@ try {
   await playing(viewer, 1); second = await publish('guest', guestSecret, 'darkgreen', 660); await playing(viewer);
   await host.getByRole('button', { name: '結束本場應援記帳', exact: true }).click(); await first.stop(); await second.stop();
   await viewer.waitForFunction(() => [...document.querySelectorAll('.duo-grid video')].every((v) => v.hidden));
-  await viewer.getByRole('button', { name: '登出', exact: true }).click(); await viewer.getByRole('textbox', { name: '帳號', exact: true }).fill('SmokeViewer'); await viewer.getByLabel('密碼', { exact: true }).fill('smoke-password-12345'); await viewer.getByRole('button', { name: '登入', exact: true }).click(); await viewer.getByText('示範點數：89', { exact: false }).waitFor();
+  await viewer.reload(); await viewer.getByText('示範點數：89', { exact: false }).waitFor();
   assert.deepEqual(errors, []);
-  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'UI registration/login/logout', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'report and resolution', 'mute', 'delete', '390px layout'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
+  const result = { passed: true, media: 'Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room', inboundRtp: stats, checked: ['path-specific OBS credentials', 'two video and audio decoders', 'source stop/restart recovery', 'host page reload keeps room and streams', 'automatic visitor points without login', 'persistent balance', 'donation and live host ledger refresh', 'announcement', 'report and resolution', 'mute', 'delete', '390px layout'], physicalOBS: false, acousticEchoCancellation: false, crossNetwork: false, at: new Date().toISOString() };
   await writeFile(new URL('../evidence/duo-smoke.json', import.meta.url), JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
 } finally {
   for (const context of contexts) await context.close(); await browser?.close(); await app.close();

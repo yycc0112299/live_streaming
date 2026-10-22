@@ -96,7 +96,13 @@ function App() {
   async function reloadAccount() {
     const response = await fetch(`${base}api/account/me`);
     if (!response.ok) throw new Error('無法讀取登入狀態。');
-    const result = await response.json(); setUser(result.user); setAccountsAvailable(result.accountsAvailable);
+    const result = await response.json();
+    if (!result.user && result.accountsAvailable) {
+      const guest = await fetch(`${base}api/account/guest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const value = await guest.json(); if (!guest.ok) throw new Error(value.error);
+      result.user = value.user;
+    }
+    setUser(result.user); setAccountsAvailable(result.accountsAvailable);
     socket.disconnect(); socket.connect();
   }
   useEffect(() => {
@@ -174,7 +180,7 @@ function App() {
           {messages.length === 0 && <div className="empty-chat">美好的對話，從一句哈囉開始。</div>}
           {messages.map((message) => <div className="message" key={message.id}><div className="message-meta"><strong>{message.nickname}</strong><time dateTime={message.at}>{new Date(message.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</time></div><p>{message.text}</p>{user && <div className="message-tools"><button onClick={() => { const reason = window.prompt('檢舉原因（最多 200 字）'); if (reason) command('chat:report', { messageId: message.id, reason }).then(() => setNotice('檢舉已送出')).catch(onError); }}>檢舉</button>{management && <><button onClick={() => command('chat:manage', { action: 'delete', messageId: message.id }).catch(onError)}>刪除</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 10 }).catch(onError)}>禁言</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 0 }).catch(onError)}>解除禁言</button></>}</div>}</div>)}
         </div>
-        <div className="composer">{user ? <><div className="identity">以 <b>{user.nickname}</b> 發言 · 間隔 {chatSettings.slowSeconds} 秒</div><form onSubmit={send}><label className="sr-only" htmlFor="message">聊天訊息</label><textarea id="message" rows="2" maxLength="500" placeholder="說點什麼吧…" value={text} onChange={(e) => setText(e.target.value)} disabled={!connected}/><div className="compose-footer"><span>{text.length}/500</span><button className="primary" disabled={!connected || sending || !text.trim()}>{sending ? '傳送中…' : '傳送 ↗'}</button></div></form></> : <p>請在下方登入或註冊後加入對話。</p>}
+        <div className="composer">{user ? <><div className="identity">以 <b>{user.nickname}</b> 發言 · 間隔 {chatSettings.slowSeconds} 秒</div><form onSubmit={send}><label className="sr-only" htmlFor="message">聊天訊息</label><textarea id="message" rows="2" maxLength="500" placeholder="說點什麼吧…" value={text} onChange={(e) => setText(e.target.value)} disabled={!connected}/><div className="compose-footer"><span>{text.length}/500</span><button className="primary" disabled={!connected || sending || !text.trim()}>{sending ? '傳送中…' : '傳送 ↗'}</button></div></form></> : <p>正在建立訪客身份，連線完成後即可聊天。</p>}
           {error && <p className="error" role="alert">{error}</p>}
         </div>
       </aside></div>

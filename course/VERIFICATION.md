@@ -186,3 +186,11 @@ Chrome 操作測試新增觀眾輸入檢舉原因、送出後看到成功提示�
 依使用者「用我的電腦測試一次」指示，在目前 Windows 電腦執行課程版 npm test（15/15）、WHEP production build，以及本機 Chrome + MediaMTX 全流程。兩路獨立合成 H.264/Opus 皆收到音訊 RTP 與解碼影格；註冊登入登出、持久餘額、應援與帳本自動更新、公告、檢舉與結案、禁言、刪訊息、斷線恢復及 390px 版面通過。最新證據覆存於 evidence/duo-smoke.json 與 duo-mobile.png，測試完成後暫存服務與測試帳號資料庫已清理。
 
 未使用實體攝影機或麥克風、未啟動 OBS 串流、未部署 Azure。此輪不代表雙實體電腦、跨網路或回音消除已通過；Vite 仍有既有大型 bundle 警告。
+
+### 2026-10-22 本機網站無法開啟與 OBS 開播修復
+
+使用者回報臨時網站無法開啟、OBS 無法開播。檢查證實原先動態埠展示服務已停止；OBS 程序有回應，但未推流。恢復既有 `scripts/start.ps1` 的固定本機服務後，MediaMTX 記錄 OBS 認證失敗。將 OBS 既有 RTMP custom 設定與本機忽略檔 `.runtime/OBS-PRIVATE.txt` 的現有憑證對齊，保留密鑰隱私並重新開播成功。
+
+OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome 實際顯示 OBS 目前的螢幕與攝影機場景。固定觀看網址為 http://127.0.0.1:4180/ ，第二路未發布時獨立顯示離線。此輪為真實單台 OBS → RTMP → MediaMTX → HLS 本機驗證，不是雙機／公網／AEC 驗收；未開始錄影、未部署 Azure。OBS 與本機網站依使用者指示維持運作。
+
+往後在 course 目錄執行 `powershell -File scripts/start.ps1` 啟動本機服務；服務必須保持執行，不能使用已結束的臨時展示網址。此方式不會自動設定 Windows 開機啟動。OBS 推流使用原本本機私人憑證，勿把另一組 Docker 或臨時測試密鑰混用。

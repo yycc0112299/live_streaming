@@ -266,3 +266,4 @@ OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome �
 
 - 「分享直播間」改為兩個明確選項：複製目前直播網址，或在瀏覽器本機產生可掃描的 QR Code；QR 產生不呼叫第三方服務。
 - 使用 MIT 授權的 `qrcode` 1.5.4，QR 內容與畫面上的唯讀網址相同。桌面與 390×844 手機版實際操作均顯示完整視窗與 QR Code。
+- Azure Run Command 已將 commit `9513f75` 部署到公開 HTTPS 網站；網站服務、MediaMTX 與 Apache 均為 active，Apache 設定檢查為 Syntax OK。公開頁面已實際顯示兩個分享選項、固定網址及 QR Code。

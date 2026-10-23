@@ -2,6 +2,8 @@
 
 ## Group 9 course final version
 
+**第二位參與者請先讀：[第二台電腦加入直播的完整步驟](course/SECOND_PC.md)**。包含管理者部署前置、公開網址、第二台 OBS/RTMPS、身份綁定、AEC、控制器與故障排查；目前公開站尚待雙主播新版部署，不能把本機演練網址直接交給第二台使用。
+
 2026-10-22 update: `course/` now supports **two fixed OBS computers in one viewing page**, persistent SQLite accounts, chat moderation, and an atomic/idempotent demo support ledger. A pinned open-source AEC Client engine feeds an OBS Browser Source through a local driver-free bridge. See **[DUAL_OBS.md](course/DUAL_OBS.md)** for setup and acceptance limits. The two physical speaker/microphone systems still need a no-headphones test; this change has not been deployed to Azure.
 
 The presentation's OBS → RTMP → MediaMTX → HLS stack is implemented in **[course/](course/README.md)** with React/hls.js playback, Socket.IO nickname chat, live/offline status, likes and connected-tab count. It includes tests, Windows startup and Azure Docker/SSH deployment. See [verification](course/VERIFICATION.md) for evidence and remaining deployment/device checks. The earlier prototypes below remain available.

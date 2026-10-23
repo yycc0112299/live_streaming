@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "actualOBSBrowserSource": true,
+  "rerouteAudio": true,
+  "monitorType": "NONE",
+  "peak": 0.001213245326653123,
+  "levels": [
+    [
+      0.0004917797050438821,
+      0.0011543026193976402,
+      0.0011543026193976402
+    ],
+    [
+      0.0004917797050438821,
+      0.0011543026193976402,
+      0.0011543026193976402
+    ]
+  ],
+  "rawMicrophonesAndDesktopInputsMuted": 1,
+  "source": "synthetic AEC; no hardware microphone capture",
+  "at": "2026-10-22T04:14:53.988Z"
+}

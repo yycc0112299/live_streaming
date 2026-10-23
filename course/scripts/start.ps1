@@ -3,10 +3,10 @@ $ErrorActionPreference = 'Stop'
 $courseRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $courseRoot
 $mediaExe = Join-Path $courseRoot '.runtime/mediamtx/mediamtx.exe'
-$mediaConfig = Join-Path $courseRoot '.runtime/mediamtx.yml'
+$mediaConfig = Join-Path $courseRoot '.runtime/mediamtx.duo.yml'
 if (!(Test-Path -LiteralPath $mediaExe)) { throw 'Run powershell -File scripts/install-media.ps1 first.' }
-$configureArgs = @('scripts/configure.mjs')
-if ($WebRTC) { $configureArgs += '--webrtc'; $mediaConfig = Join-Path $courseRoot '.runtime/mediamtx.webrtc.yml' }
+$configureArgs = @('scripts/configure.mjs', '--duo')
+if ($WebRTC) { $configureArgs += '--webrtc'; $mediaConfig = Join-Path $courseRoot '.runtime/mediamtx.duo.webrtc.yml' }
 & node @configureArgs
 if ($LASTEXITCODE -ne 0) { throw 'Configuration failed' }
 & $mediaExe --validate-conf=$mediaConfig

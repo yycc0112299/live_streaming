@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "actualOBS": true,
+  "actualWASAPIMicrophone": true,
+  "actualSpeakerLoopback": true,
+  "frames": 288,
+  "micRms": 0.0001665848249103874,
+  "referenceRms": 0.0,
+  "playedCalibrationSound": false,
+  "recordedAudio": false,
+  "twoComputerNoHeadphonesAcceptance": false,
+  "at": "2026-10-22T04:02:34.1916085Z"
+}

@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "media": "Two independent synthetic H.264+Opus WHIP publishers → real MediaMTX → two WHEP players in one room",
+  "inboundRtp": [
+    {
+      "kind": "audio",
+      "bytesReceived": 12888
+    },
+    {
+      "kind": "video",
+      "bytesReceived": 79870,
+      "framesDecoded": 42
+    },
+    {
+      "kind": "audio",
+      "bytesReceived": 10294
+    },
+    {
+      "kind": "video",
+      "bytesReceived": 72715,
+      "framesDecoded": 20
+    }
+  ],
+  "checked": [
+    "path-specific OBS credentials",
+    "two video and audio decoders",
+    "source stop/restart recovery",
+    "host page reload keeps room and streams",
+    "automatic visitor points without login",
+    "persistent balance",
+    "donation and live host ledger refresh",
+    "announcement",
+    "report and resolution",
+    "mute",
+    "delete",
+    "390px layout",
+    "Enter sends chat without submitting IME composition",
+    "only paid messages speak once",
+    "six gift tiers play in order",
+    "OBS control buttons via simulated controller"
+  ],
+  "physicalOBS": false,
+  "acousticEchoCancellation": false,
+  "crossNetwork": false,
+  "at": "2026-10-22T16:33:56.745Z"
+}

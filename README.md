@@ -2,6 +2,8 @@
 
 ## Group 9 course final version
 
+2026-10-22 update: `course/` now supports **two fixed OBS computers in one viewing page**, persistent SQLite accounts, chat moderation, and an atomic/idempotent demo support ledger. A pinned open-source AEC Client engine feeds an OBS Browser Source through a local driver-free bridge. See **[DUAL_OBS.md](course/DUAL_OBS.md)** for setup and acceptance limits. The two physical speaker/microphone systems still need a no-headphones test; this change has not been deployed to Azure.
+
 The presentation's OBS → RTMP → MediaMTX → HLS stack is implemented in **[course/](course/README.md)** with React/hls.js playback, Socket.IO nickname chat, live/offline status, likes and connected-tab count. It includes tests, Windows startup and Azure Docker/SSH deployment. See [verification](course/VERIFICATION.md) for evidence and remaining deployment/device checks. The earlier prototypes below remain available.
 
 An original, web-first live-streaming prototype inspired by [Pure Live](https://github.com/liuchuancong/pure_live). Unlike Pure Live's third-party stream viewer, this project lets a user start their own broadcast. No Pure Live source code is copied into this repository.
@@ -34,4 +36,4 @@ Setup evidence (2026-10-15): the configured deployment succeeded with all five r
 
 ## Current demo support feature
 
-The course app now includes a clearly labelled demo support wallet: each connection starts with 100 non-cash points and can send 1, 5, or 10 points. The server validates the amount and balance and broadcasts the in-room total. It is intentionally session-scoped and is not a real payment system.
+The course app grants 100 non-cash points once per registered account. Balances, sender/host transaction records and room identities persist in SQLite. Sending 1, 5 or 10 points uses one database transaction and a unique request ID; retries do not charge twice. This remains a demo with no purchases, withdrawal or cash value.

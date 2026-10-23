@@ -1,0 +1,14 @@
+{
+  "engine": "AEC Client v1.13.1 DTLN-AEC 128; upstream code and models, NS disabled",
+  "sourceCommit": "f76ed632649723003e8778661d565523bdbd5732",
+  "syntheticEchoReductionDb": 51.69,
+  "referenceBenefitDb": 51.46,
+  "nearOnlyGainDb": -0.19,
+  "doubleTalkNearSignalCorrelation": 0.939,
+  "secondsProcessed": 48,
+  "elapsedSeconds": 1.95,
+  "physicalSpeakersAndMicrophones": false,
+  "twoComputerNoHeadphonesAcceptance": false,
+  "inferenceFailureBlocked": true,
+  "passed": true
+}

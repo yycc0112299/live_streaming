@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "checked": [
+    "upstream DTLN output through local WebSocket",
+    "AudioWorklet produces live PCM audio",
+    "disconnect becomes silence",
+    "private URL path required",
+    "Chrome diagnostics do not play mic through physical speakers"
+  ],
+  "physicalMicrophoneOpened": false,
+  "physicalSpeakersUsed": false,
+  "actualOBS": false,
+  "at": "2026-10-22T04:14:50.971Z"
+}

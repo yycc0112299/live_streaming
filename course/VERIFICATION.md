@@ -267,3 +267,8 @@ OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome �
 - 「分享直播間」改為兩個明確選項：複製目前直播網址，或在瀏覽器本機產生可掃描的 QR Code；QR 產生不呼叫第三方服務。
 - 使用 MIT 授權的 `qrcode` 1.5.4，QR 內容與畫面上的唯讀網址相同。桌面與 390×844 手機版實際操作均顯示完整視窗與 QR Code。
 - Azure Run Command 已將 commit `9513f75` 部署到公開 HTTPS 網站；網站服務、MediaMTX 與 Apache 均為 active，Apache 設定檢查為 Syntax OK。公開頁面已實際顯示兩個分享選項、固定網址及 QR Code。
+
+## 2026-10-23 第二主播自助加入與公開直播
+
+- commit `5a06ab1` 已部署；第一位 `host` 登入後自動建立等待房間，第二位具主播權限的帳號可自行按「以第二位主播加入」。22/22 測試與正式建置通過，第二台 Codex 步驟見 `SECOND_COMPUTER_CODEX.md`。
+- Azure RTMPS 1936 白名單依當次網路更新為 `49.214.7.169/32`。OBS 经 RTMPS 启动成功，读回 `outputActive=true`、无重连；公开 API 显示 `live=true`，浏览器实际播放 1280×720，播放时间持续增加。第二路仍为离线，尚未进行第二台实体电脑验收。

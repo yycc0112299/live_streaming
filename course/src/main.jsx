@@ -164,9 +164,9 @@ function App() {
     try { setQrCode(await QRCode.toDataURL(shareUrl, { width: 280, margin: 2, errorCorrectionLevel: 'M' })); }
     catch { setNotice('QR Code 產生失敗，請改用複製網址。'); }
   }
-  async function roomAction(event) {
+  async function roomAction(event, value) {
     setRoomBusy(true);
-    try { await command(event); }
+    try { await command(event, value); }
     catch (error) { onError(error); }
     finally { setRoomBusy(false); }
   }
@@ -184,6 +184,7 @@ function App() {
         <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim()) donate(10, speechText.trim()); }}><label>點數語音留言（10 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < 10 || donating || Boolean(pendingDonation) || !speechText.trim()}>花 10 點送出語音留言</button><p className="muted">一般聊天不會朗讀。只有成功扣點的語音留言才會播放；內容依序朗讀，瀏覽器可能需要先點一下網頁才能出聲。</p></form>
         <div className="play-hint">觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。{!useWebRTC && 'HLS 影音會比聊天稍晚。'}</div>
         {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError}/>}
+        {management && !room.host && <section className="management" aria-label="重新開啟點數應援"><h2>點數應援已結束</h2><p>重新開啟後，觀眾即可再次送禮物與點數語音留言。</p><button disabled={roomBusy} onClick={() => roomAction('room:start', { audioChecklist: true })}>{roomBusy ? '開啟中…' : '重新開啟點數應援'}</button></section>}
         {management && room.host && !room.guest && room.host.userId !== user.id && <section className="management" aria-label="第二位主播加入"><h2>第二位主播加入</h2><p>在第二台電腦完成 OBS 與 AEC 設定後，按一下即可占用第二路；第一位主播不用操作。</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>以第二位主播加入</button></section>}
         {management && room.host && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname || '等待自行加入'}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">主持人登入後會自動建立直播間；第二位自行加入。結束記帳不會遙控 OBS。</p></section>}
       </section>

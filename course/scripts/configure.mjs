@@ -36,7 +36,7 @@ if (process.argv.includes('--duo')) {
 if (process.argv.includes('--webrtc')) {
   if (process.argv.includes('--docker')) throw new Error('WebRTC local trial does not support --docker');
   const config = (await readFile(activeTarget, 'utf8')).replace(/^webrtc: false$/m,
-    'webrtc: true\nwebrtcAddress: 127.0.0.1:8889\nwebrtcLocalUDPAddress: 127.0.0.1:8189\nwebrtcIPsFromInterfaces: false\nwebrtcAdditionalHosts: [127.0.0.1]');
+    'webrtc: true\nwebrtcAddress: 127.0.0.1:8889\nwebrtcLocalUDPAddress: 127.0.0.1:8189\nwebrtcIPsFromInterfaces: false\nwebrtcAdditionalHosts: [127.0.0.1]\nwebrtcHandshakeTimeout: 30s');
   if (!config.includes('webrtcAddress: 127.0.0.1:8889')) throw new Error('Expected the original local HLS configuration');
   await writeFile(resolve(root, process.argv.includes('--duo') ? '.runtime/mediamtx.duo.webrtc.yml' : '.runtime/mediamtx.webrtc.yml'), config, { mode: 0o600 });
   console.log('Local WebRTC trial configuration created; original HLS configuration preserved.');

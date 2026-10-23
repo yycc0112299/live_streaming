@@ -1,0 +1,17 @@
+{
+  "viewers": 10,
+  "successful": 10,
+  "failed": 0,
+  "elapsedMs": 19748,
+  "p50PlayMs": 19048,
+  "p95PlayMs": 19061,
+  "status": {
+    "live": true,
+    "available": true,
+    "viewers": 11,
+    "likes": 0,
+    "supportTotal": 122,
+    "status": "ok"
+  },
+  "failures": []
+}

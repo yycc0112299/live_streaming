@@ -28,6 +28,7 @@ test('configuration CLI preserves keys on rerun and isolates local/Docker creden
     const guest = readFileSync(join(root, '.runtime/OBS-GUEST-PRIVATE.txt'), 'utf8');
     const original = readFileSync(join(root, '.runtime/mediamtx.yml'), 'utf8');
     assert.equal(run('--duo', '--webrtc').status, 0);
+    assert.match(readFileSync(join(root, '.runtime/mediamtx.duo.webrtc.yml'), 'utf8'), /webrtcHandshakeTimeout: 30s/);
     assert.equal(readFileSync(join(root, '.runtime/OBS-PRIVATE.txt'), 'utf8'), primary);
     assert.equal(readFileSync(join(root, '.runtime/OBS-GUEST-PRIVATE.txt'), 'utf8'), guest);
     assert.equal(readFileSync(join(root, '.runtime/mediamtx.yml'), 'utf8'), original);

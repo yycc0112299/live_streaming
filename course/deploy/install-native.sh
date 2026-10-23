@@ -40,6 +40,7 @@ node scripts/configure.mjs --duo
 npm ci --no-audit --no-fund
 npm test
 npm run build
+ln -sfn "$app_dir" "$base/current"
 id group9-live >/dev/null 2>&1 || useradd --system --home "$base" --shell /usr/sbin/nologin group9-live
 chown -R group9-live:group9-live "$base/shared"
 cat > /etc/systemd/system/group9-media.service <<EOF

@@ -134,7 +134,7 @@ h1 em {
 }
 .room-grid {
   display:grid;
-  grid-template-columns:minmax(0,1fr) 340px;
+  grid-template-columns:minmax(0,1fr) 300px;
   gap:24px
 }
 .broadcast {
@@ -246,8 +246,16 @@ video {
   font-size:12px;
   color:#a6b0c1
 }
-.support-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; color:var(--muted); font-size:13px; }
-.support-bar button { padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--ink); }
+.gift-shop { margin-top:14px; padding:14px; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
+.gift-shop-heading { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:10px; }
+.gift-shop-heading>span { color:var(--muted); font-size:12px; }
+.gift-options { display:grid; grid-template-columns:repeat(6,minmax(76px,1fr)); gap:8px; }
+.gift-option { min-width:0; padding:9px 5px; display:flex; flex-direction:column; align-items:center; gap:2px; background:linear-gradient(160deg,#202a3b,#121824); }
+.gift-option-icon { font-size:28px; line-height:1.15; }
+.gift-option>span:not(.gift-option-icon) { font-size:11px; white-space:nowrap; }
+.gift-option>b { color:#ffe09b; font-size:10px; }
+.gift-option-heart { border-color:#a83f65; }.gift-option-rose { border-color:#ba4662; }.gift-option-rocket { border-color:#498bc9; }.gift-option-car { border-color:#d25184; }.gift-option-party { border-color:#8f5bd2; }.gift-option-carnival { border-color:#e0aa4b; box-shadow:inset 0 0 16px #d8933420; }
+.pending-donation { display:flex; gap:8px; margin-top:10px; }
 .stream-overlay { position:absolute; left:18px; right:18px; bottom:52px; z-index:3; display:flex; flex-direction:column; gap:4px; padding:12px 16px; border-radius:14px; color:#fff; background:linear-gradient(90deg,rgba(16,19,35,.92),rgba(77,40,115,.8)); box-shadow:0 8px 24px #0006; animation:overlay-in .2s ease-out; pointer-events:none; }
 .stream-overlay strong { font-size:14px; }
 .stream-overlay span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:16px; }
@@ -277,8 +285,11 @@ video {
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  min-height:560px;
-  max-height:700px
+  min-height:420px;
+  max-height:620px;
+  align-self:start;
+  position:sticky;
+  top:12px
 }
 .chat-heading {
   padding:18px 20px;
@@ -305,8 +316,8 @@ video {
   background:#78e1c2
 }
 .chat-welcome {
-  margin:18px 18px 5px;
-  padding:14px;
+  margin:10px 12px 3px;
+  padding:10px;
   background:#1b2930;
   border:1px solid #2b3f42;
   border-radius:8px
@@ -323,7 +334,7 @@ video {
 .messages {
   flex:1;
   min-height:100px;
-  max-height:380px;
+  max-height:330px;
   overflow-y:auto;
   padding:12px 20px;
   scrollbar-width:thin;
@@ -335,26 +346,22 @@ video {
   margin:30px 0;
   text-align:center
 }
-.message {
-  padding:9px 0
-}
-.message-meta {
-  display:flex;
-  gap:12px;
-  align-items:center
-}
+.message { padding:6px 0; }
+.message-line { display:flex; gap:6px; align-items:baseline; }
 .message strong {
   color:#94dfca;
   font-size:12px
 }
 .message time {
   font-size:9px;
-  color:#94a2b7
+  color:#94a2b7;
+  margin-left:auto;
+  flex:none
 }
 .message p {
   font-size:13px;
-  margin:3px 0 0;
-  white-space:pre-wrap
+  margin:0;
+  white-space:normal
 }
 .composer {
   padding:18px;
@@ -367,7 +374,7 @@ video {
   color:#b0bdcf;
   margin-bottom:8px
 }
-.composer input,.composer textarea {
+.composer input {
   width:100%;
   background:#0c121e;
   border:1px solid #384457;
@@ -375,9 +382,8 @@ video {
   border-radius:7px;
   padding:10px;
   font-size:12px;
-  resize:vertical
 }
-.composer input::placeholder,.composer textarea::placeholder {
+.composer input::placeholder {
   color:#91a0b5
 }
 .primary {
@@ -412,6 +418,9 @@ video {
   align-items:center;
   margin-top:8px
 }
+.chat-input-row { display:flex; gap:7px; }
+.chat-input-row input { min-width:0; flex:1; }
+.chat-input-row button { flex:none; }
 .compose-footer span {
   font-size:10px;
   color:#94a2b7
@@ -495,7 +504,7 @@ footer {
     padding:30px 24px 0
   }
   .room-grid {
-    grid-template-columns:minmax(0,1fr) 300px;
+    grid-template-columns:minmax(0,1fr) 280px;
     gap:16px
   }
   .course-tag {
@@ -535,7 +544,8 @@ footer {
   }
   .chat-panel {
     min-height:480px;
-    max-height:600px
+    max-height:520px;
+    position:static
   }
   .offline {
     padding:40px 12px 12px
@@ -605,6 +615,7 @@ footer {
 .ledger td,.ledger th { text-align:left; border-bottom:1px solid #303949; padding:8px; }
 .management article { border-bottom:1px solid #303949; padding:12px 0; }
 @media(max-width:480px) { .duo-grid { grid-template-columns:1fr; } .account-form { flex-direction:column; align-items:stretch; } }
+@media(max-width:900px) { .gift-options { grid-template-columns:repeat(3,1fr); } }
 
 .gift-stage { position:absolute; inset:0; z-index:8; overflow:hidden; pointer-events:none; display:grid; place-items:center; border-radius:14px; }
 .gift-sprite { position:relative; font-size:clamp(64px,12vw,150px); filter:drop-shadow(0 12px 18px #0008); animation:gift-pop 1s ease both; }

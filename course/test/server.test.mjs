@@ -144,18 +144,18 @@ test('points are account scoped, atomic, idempotent and cannot be self-donated',
   s.live(true); await s.app.poll();
   const value = { amount: 10, requestId: crypto.randomUUID(), broadcastId };
   const first = await emit(a, 'donate', value);
-  assert.equal(first.points, 90); assert.equal(first.supportTotal, 10);
+  assert.equal(first.points, 990); assert.equal(first.supportTotal, 10);
   assert.equal((await emit(a, 'donate', value)).duplicate, true);
-  assert.equal(s.app.store.user(user.id).points, 90);
+  assert.equal(s.app.store.user(user.id).points, 990);
   assert.ok((await emit(a, 'donate', { ...value, amount: 5 })).error);
   assert.ok((await emit(host, 'donate', { ...value, requestId: crypto.randomUUID() })).error);
   for (const amount of [2, 101, -5, '10', null]) assert.ok((await emit(a, 'donate', { ...value, amount, requestId: crypto.randomUUID() })).error);
   const reconnect = await client(t, s.url, { extraHeaders: { Cookie: `group9_session=${token}` } });
-  assert.equal((await emit(reconnect, 'ledger')).points, 90);
-  const results = await Promise.all(Array.from({ length: 10 }, () => emit(a, 'donate', { amount: 10, requestId: crypto.randomUUID(), broadcastId })));
+  assert.equal((await emit(reconnect, 'ledger')).points, 990);
+  const results = await Promise.all(Array.from({ length: 10 }, () => emit(a, 'donate', { amount: 100, requestId: crypto.randomUUID(), broadcastId })));
   assert.equal(results.filter((r) => r.ok).length, 9);
-  assert.equal(s.app.store.user(user.id).points, 0);
-  assert.equal((await emit(host, 'ledger')).received, 100);
+  assert.equal(s.app.store.user(user.id).points, 90);
+  assert.equal((await emit(host, 'ledger')).received, 910);
   await emit(host, 'room:end');
   assert.ok((await emit(a, 'donate', { amount: 1, requestId: crypto.randomUUID(), broadcastId })).error);
 });
@@ -231,7 +231,7 @@ test('HTTP accounts rotate sessions, reject cross-origin, and revoke active sock
   const nextCookie = login.headers.get('set-cookie').split(';')[0]; assert.notEqual(nextCookie, cookie);
   assert.equal((await (await fetch(s.url + '/api/account/me', { headers: { Cookie: cookie } })).json()).user, null);
   const socket = await client(t, s.url, { extraHeaders: { Cookie: nextCookie } });
-  assert.equal((await emit(socket, 'ledger')).points, 100);
+  assert.equal((await emit(socket, 'ledger')).points, 1000);
   const disconnected = once(socket, 'disconnect');
   assert.equal((await post('logout', {}, nextCookie)).status, 200); await disconnected;
   assert.equal((await (await fetch(s.url + '/api/account/me', { headers: { Cookie: nextCookie } })).json()).user, null);
@@ -244,18 +244,18 @@ test('foreign browser origins cannot create a chat connection', async (t) => {
   assert.ok(error); assert.equal(socket.connected, false);
 });
 
-test('visitors get 100 points without registration and cannot refill an existing session', async (t) => {
+test('visitors get 1000 points without registration and cannot refill an existing session', async (t) => {
   const s = await setup(t);
   const enter = (cookie = '') => fetch(s.url + '/api/account/guest', { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: '{}' });
   const first = await enter(); assert.equal(first.status, 200);
   const cookie = first.headers.get('set-cookie').split(';')[0];
-  const { user } = await first.json(); assert.equal(user.points, 100); assert.equal(user.isGuest, 1); assert.equal(user.role, 'viewer');
+  const { user } = await first.json(); assert.equal(user.points, 1000); assert.equal(user.isGuest, 1); assert.equal(user.role, 'viewer');
   const { socket: host } = await member(t, s, 'Host', 'host');
   const { broadcastId } = await emit(host, 'room:start', { guestUsername: user.username, audioChecklist: true });
   s.live(true); await s.app.poll();
   const visitor = await client(t, s.url, { extraHeaders: { Cookie: cookie } });
-  assert.equal((await emit(visitor, 'donate', { amount: 10, broadcastId, requestId: crypto.randomUUID() })).points, 90);
-  const again = await enter(cookie); assert.equal((await again.json()).user.points, 90); assert.equal(again.headers.get('set-cookie'), null);
+  assert.equal((await emit(visitor, 'donate', { amount: 10, broadcastId, requestId: crypto.randomUUID() })).points, 990);
+  const again = await enter(cookie); assert.equal((await again.json()).user.points, 990); assert.equal(again.headers.get('set-cookie'), null);
   const me = await fetch(s.url + '/api/account/me', { headers: { Cookie: cookie } }); assert.equal((await me.json()).user.id, user.id);
   const other = await enter(); assert.notEqual((await other.json()).user.id, user.id);
   assert.ok((await emit(visitor, 'chat:review')).error);

@@ -28,9 +28,9 @@ test('SQLite reopen retains accounts, sessions, balanced ledger, chat deletion, 
     store.close(); store = openStore(path);
     assert.equal(store.session(token).id, viewer.id);
     assert.equal(store.room().broadcastId, broadcastId); assert.equal(store.room().guest.userId, viewer.id);
-    assert.equal((await store.login({ username: 'VIEWER', password: 'a-long-test-password' })).points, 90);
+    assert.equal((await store.login({ username: 'VIEWER', password: 'a-long-test-password' })).points, 990);
     assert.equal(store.ledger(host).received, 10); assert.equal(store.ledger(viewer).sent, 10);
-    assert.equal(store.user(host.id).points + store.user(viewer.id).points + store.ledger(host).received, 200);
+    assert.equal(store.user(host.id).points + store.user(viewer.id).points + store.ledger(host).received, 2000);
     store.db.prepare("UPDATE users SET role='admin' WHERE id=?").run(host.id);
     const adminLedger = store.ledger(store.user(host.id));
     assert.equal(adminLedger.scope, 'all'); assert.equal(adminLedger.transactions.length, 1); assert.equal(adminLedger.reconciliation.balanced, true);
@@ -94,7 +94,7 @@ test('legacy donation ledger migrates without losing receipts and accepts all si
       const sender = store.guest(); const value = { amount: gift.amount, requestId: crypto.randomUUID(), broadcastId: bid };
       assert.equal(store.donate(sender, value, bid).amount, gift.amount);
       assert.equal(store.donate(sender, value, bid).duplicate, true);
-      assert.equal(store.user(sender.id).points, 100 - gift.amount);
+      assert.equal(store.user(sender.id).points, 1000 - gift.amount);
     }
     assert.equal(store.ledger(host).received, 192);
     assert.throws(() => store.donate(store.guest(), { amount: 101, requestId: crypto.randomUUID(), broadcastId: bid }, bid));
@@ -109,7 +109,7 @@ test('paid voice messages charge once, persist and enforce mute, words and text 
     const bid = store.start(host.id, sender.username);
     const value = { amount: 10, requestId: crypto.randomUUID(), broadcastId: bid, message: '想說的話' };
     const receipt = store.donate(sender, value, bid); assert.equal(receipt.message, value.message);
-    assert.equal(store.user(sender.id).points, 90); assert.equal(store.donate(sender, value, bid).duplicate, true);
+    assert.equal(store.user(sender.id).points, 990); assert.equal(store.donate(sender, value, bid).duplicate, true);
     assert.equal(store.ledger(sender).transactions[0].message, value.message);
     assert.throws(() => store.donate(sender, { ...value, message: '另一句話' }, bid), /請求 ID/);
     const invalid = (change) => ({ ...value, requestId: crypto.randomUUID(), ...change });
@@ -120,6 +120,6 @@ test('paid voice messages charge once, persist and enforce mute, words and text 
     assert.throws(() => store.donate(sender, invalid({ message: 'BLOCKED' }), bid), /限制詞/);
     store.moderate(host, { action: 'mute', userId: sender.id, minutes: 10 });
     assert.throws(() => store.donate(sender, invalid({}), bid), /禁言/);
-    assert.equal(store.user(sender.id).points, 90); assert.equal(store.ledger(host).received, 10);
+    assert.equal(store.user(sender.id).points, 990); assert.equal(store.ledger(host).received, 10);
   } finally { store.close(); }
 });

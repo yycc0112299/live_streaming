@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 const derive = promisify(scrypt);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const passwordOptions = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
+export const INITIAL_POINTS = 1000;
 export function checkText(value, max, label) {
   if (typeof value !== 'string' || !value.trim() || value.length > max || /[\p{Cc}\p{Cf}]/u.test(value)) throw new Error(`${label}需為 1–${max} 個字，不能包含控制字元。`);
   return value.trim();
@@ -18,7 +19,7 @@ export function openStore(path) {
   const db = new DatabaseSync(path);
   if (path !== ':memory:') chmodSync(path, 0o600);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
-    CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, nickname TEXT NOT NULL, password TEXT NOT NULL, salt TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('viewer','host','admin')), points INTEGER NOT NULL DEFAULT 100 CHECK(points>=0), created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, nickname TEXT NOT NULL, password TEXT NOT NULL, salt TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('viewer','host','admin')), points INTEGER NOT NULL DEFAULT 1000 CHECK(points>=0), created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS broadcasts(id TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id), guest_id TEXT REFERENCES users(id), started_at TEXT NOT NULL, ended_at TEXT);
     CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
@@ -28,10 +29,14 @@ export function openStore(path) {
     CREATE TABLE IF NOT EXISTS mutes(user_id TEXT PRIMARY KEY REFERENCES users(id), until_ms INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY, message_id TEXT NOT NULL REFERENCES messages(id), reporter_id TEXT NOT NULL REFERENCES users(id), reason TEXT NOT NULL, created_at TEXT NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, UNIQUE(message_id,reporter_id));
     CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY, actor_id TEXT NOT NULL REFERENCES users(id), action TEXT NOT NULL, details TEXT NOT NULL, at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS app_migrations(name TEXT PRIMARY KEY, applied_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS messages_time ON messages(at);
     CREATE INDEX IF NOT EXISTS messages_user ON messages(user_id);
     CREATE INDEX IF NOT EXISTS donations_recipient ON donations(recipient_id,created_at);
     CREATE INDEX IF NOT EXISTS donations_broadcast ON donations(broadcast_id);`);
+  if (!db.prepare("SELECT 1 FROM app_migrations WHERE name='test-points-1000'").get()) {
+    db.exec(`BEGIN IMMEDIATE; UPDATE users SET points=points+900; INSERT INTO app_migrations VALUES('test-points-1000',datetime('now')); COMMIT`);
+  }
   const donationSchema = db.prepare("SELECT sql FROM sqlite_master WHERE name='donations'").get().sql;
   if (donationSchema.includes('CHECK(amount IN (1,5,10))')) {
     db.exec('BEGIN IMMEDIATE');
@@ -59,7 +64,7 @@ export function openStore(path) {
   }
   function guest() {
     const id = randomUUID();
-    run('INSERT INTO users(id,username,nickname,password,salt,created_at) VALUES(?,?,?,?,?,?)', id, `visitor-${randomBytes(8).toString('hex')}`, `訪客${id.slice(0, 6)}`, '', '', new Date().toISOString());
+    run('INSERT INTO users(id,username,nickname,password,salt,points,created_at) VALUES(?,?,?,?,?,?,?)', id, `visitor-${randomBytes(8).toString('hex')}`, `訪客${id.slice(0, 6)}`, '', '', INITIAL_POINTS, new Date().toISOString());
     return user(id);
   }
   async function register({ username, password, nickname } = {}) {
@@ -69,7 +74,7 @@ export function openStore(path) {
     const salt = randomBytes(16).toString('hex');
     const key = await derive(password, salt, 64, passwordOptions);
     const id = randomUUID();
-    try { run('INSERT INTO users(id,username,nickname,password,salt,created_at) VALUES(?,?,?,?,?,?)', id, username.toLowerCase(), clean, key.toString('hex'), salt, new Date().toISOString()); }
+    try { run('INSERT INTO users(id,username,nickname,password,salt,points,created_at) VALUES(?,?,?,?,?,?,?)', id, username.toLowerCase(), clean, key.toString('hex'), salt, INITIAL_POINTS, new Date().toISOString()); }
     catch (error) { if (error.message.includes('UNIQUE')) throw new Error('帳號已存在。'); throw error; }
     return user(id);
   }
@@ -160,7 +165,7 @@ export function openStore(path) {
     const nextCursor = rows.length > 100 ? rows[99].cursor : null;
     rows.splice(100);
     const totals = get('SELECT COALESCE(SUM(CASE WHEN sender_id=? THEN amount ELSE 0 END),0) AS sent,COALESCE(SUM(CASE WHEN recipient_id=? THEN amount ELSE 0 END),0) AS received FROM donations', actor.id, actor.id);
-    const reconciliation = actor.role === 'admin' ? get('SELECT (SELECT COUNT(*)*100 FROM users) AS granted,(SELECT COALESCE(SUM(points),0) FROM users) AS wallets,(SELECT COALESCE(SUM(amount),0) FROM donations) AS income') : undefined;
+    const reconciliation = actor.role === 'admin' ? get(`SELECT (SELECT COUNT(*)*${INITIAL_POINTS} FROM users) AS granted,(SELECT COALESCE(SUM(points),0) FROM users) AS wallets,(SELECT COALESCE(SUM(amount),0) FROM donations) AS income`) : undefined;
     return { transactions: rows, nextCursor, scope: actor.role === 'admin' ? 'all' : 'own', ...totals, points: user(actor.id).points, ...(reconciliation ? { reconciliation: { ...reconciliation, balanced: reconciliation.granted === reconciliation.wallets + reconciliation.income } } : {}) };
   }
   function room() {

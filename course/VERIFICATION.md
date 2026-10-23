@@ -1,5 +1,9 @@
 # 驗證紀錄 — 2026-10-19
 
+## 2026-10-23 13:20 本機 OBS 重連成功（取代下方暫停狀態）
+
+使用者手動啟動 MediaMTX 後，1935 與網站 4180 均正常監聽。OBS 原先是無標題空白場景且 WebSocket 無監聽；重新啟動並在未正常關閉提示選一般模式後，成功載入既有 Group9 Local／Group9 Course／Group9 Demo，既有認證的 WebSocket 4455 恢復，未變更安全設定或密碼。使用現用雙來源設定中的既有 live 認證重新推流至 localhost，OBS 讀回 outputActive=true、outputReconnecting=false，約 19 秒時送出 1536295 bytes、outputSkippedFrames=0，錄影仍為 false。網站來源 live=true、guest=false；Chrome 實際讀回 1280×720、readyState=4、paused=false，兩次播放時間由 27.073913 增至 38.504780 秒，畫面可見真實桌面與攝影機。私人截圖存 `.runtime/obs-reconnected-20261023.jpg`，不提交使用者畫面至 Git。網站、OBS 及使用者啟動的媒體服務保留運作；本輪僅證明本機單台直播恢復，未驗證獨立聽音、雙機、回音消除或 Azure 公網播放。
+
 ## 2026-10-23 單台重測暫停於媒體服務啟動
 
 使用者確認第二台尚未準備，改為先測本人電腦。網站 4180 仍在運作，但本機 1935 沒有 listener，OBS 指向本機 RTMP 並持續重連、送出位元組 0。停止失效重連後，OBS 最後讀回推流／錄影均為 false；公開站亦未推流。啟動既有 MediaMTX 的命令被自動核准審查拒絕，僅回覆 `blocked by policy`，未改用其它方式啟動。需要使用者手動啟動既有 `.runtime/mediamtx/mediamtx.exe` 並指定 `.runtime/mediamtx.duo.yml`，再繼續 OBS／網站實播驗證。本輪尚未恢復直播，亦未進行雙機測試。

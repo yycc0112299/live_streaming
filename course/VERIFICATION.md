@@ -254,3 +254,10 @@ OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome �
 - 20 分頁測試曾單次達 20/20，但重複結果降至 15/20、14/20；目前只把 10 個同時加入視為已重複驗證的容量。`evidence/public-20-viewers-2026-10-23.json` 保留最後一次結果，不以單次最佳值宣稱穩定容量。
 - MediaMTX 的 `webrtcHandshakeTimeout` 從預設 10 秒延長至 30 秒，避免突發加入時過早中止 ICE；壓測後仍有逾時，表示小型 VM／單一測試來源的尖峰容量有限。
 - 以上數字是開頁至影片開始播放時間，不是畫面端到端延遲。所有模擬觀眾來自同一台電腦與同一公開 IP；尚未以多支實體手機及不同電信網路驗證。
+
+## 2026-10-23 固定公開網址與手機版部署
+
+- Azure 正式站固定為 `https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/`；電腦的 `http://127.0.0.1:4180/` 僅供本機開發，不再當作手機觀看網址。
+- VM 部署更新至 main `2b6a9aa` 之後的同版程式，並以 `APP_BASE=/group9/` 重建；Apache 的 `/group9/assets/` Alias 已切到新版 release。公開 HTML、JS、CSS 與 `/group9/api/status` 均回 HTTP 200。
+- 公開服務設定 `PUBLIC_ORIGIN=https://group9liveb11302133.japaneast.cloudapp.azure.com`，HTTPS 訪客 session 可建立。390×844 瀏覽器驗證顯示雙 OBS、六級禮物、Enter 傳送、點數語音留言及 1000 示範點數，沒有橫向版面溢出。
+- Azure VM 必須保持執行，公開網址才可使用；停止後再次啟動仍沿用同一網址。本次沒有使用實體手機與行動網路驗收，不能把 390px 瀏覽器驗證當成不同電信網路的實機證明。

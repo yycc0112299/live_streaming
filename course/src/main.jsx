@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import Hls from 'hls.js';
 import MediaMTXWebRTCReader from './vendor/mediamtx-reader.js';
 import { io } from 'socket.io-client';
+import QRCode from 'qrcode';
 import './style.css';
 import Account from './Account.jsx';
 import Moderation from './Moderation.jsx';
@@ -92,6 +93,8 @@ function App() {
   const [sending, setSending] = useState(false);
   const [heart, setHeart] = useState(0);
   const [notice, setNotice] = useState('');
+  const [shareOpen, setShareOpen] = useState(false);
+  const [qrCode, setQrCode] = useState('');
   const chat = useRef(null);
   const management = ['host', 'admin'].includes(user?.role);
   function command(event, value) {
@@ -154,9 +157,14 @@ function App() {
     catch (error) { onError(error); }
     finally { setDonating(false); }
   }
-  async function share() {
-    try { await navigator.clipboard.writeText(location.href); setNotice('觀看連結已複製'); }
-    catch { setNotice(`無法自動複製，請手動複製：${location.href}`); }
+  const shareUrl = new URL(base, location.origin).href;
+  async function copyShareUrl() {
+    try { await navigator.clipboard.writeText(shareUrl); setNotice('觀看連結已複製'); }
+    catch { setNotice(`無法自動複製，請手動複製：${shareUrl}`); }
+  }
+  async function showQrCode() {
+    try { setQrCode(await QRCode.toDataURL(shareUrl, { width: 280, margin: 2, errorCorrectionLevel: 'M' })); }
+    catch { setNotice('QR Code 產生失敗，請改用複製網址。'); }
   }
   async function roomAction(event) {
     setRoomBusy(true);
@@ -168,7 +176,8 @@ function App() {
     <header className="topbar"><a href={base} className="brand"><span className="brand-icon">◉</span> CLOUD<span>LIVE</span><small>GROUP 09</small></a><span className="course-tag">電子工程總整課程 · NTUST</span><span className={`connection ${connected ? 'online' : ''}`}>{connected ? '已連線' : '重新連線中…'}</span></header>
     <main>
       <div className="eyebrow">ONE ROOM. SHARED MOMENTS.</div>
-      <div className="heading"><div><h1>讓每個瞬間，<em>即時相聚。</em></h1><p>一場直播，一個聊天室。打開瀏覽器，就在現場。</p></div><button className="share" onClick={share}>↗ 分享直播間</button></div>
+      <div className="heading"><div><h1>讓每個瞬間，<em>即時相聚。</em></h1><p>一場直播，一個聊天室。打開瀏覽器，就在現場。</p></div><button className="share" onClick={() => setShareOpen(true)}>↗ 分享直播間</button></div>
+      {shareOpen && <dialog className="share-dialog" open aria-labelledby="share-title"><div className="share-dialog-heading"><h2 id="share-title">分享直播間</h2><button aria-label="關閉分享視窗" onClick={() => { setShareOpen(false); setQrCode(''); }}>×</button></div><p>分享這個固定網址，朋友打開連結或掃描 QR Code 就能進入直播間。</p><div className="share-options"><button onClick={copyShareUrl}>複製網址</button><button onClick={showQrCode}>顯示 QR Code</button></div><label>直播網址<input readOnly value={shareUrl} onFocus={(event) => event.target.select()}/></label>{qrCode && <div className="qr-code" role="status"><img src={qrCode} alt="直播網站 QR Code"/><span>使用手機相機掃描即可進入</span></div>}</dialog>}
       <div className="room-grid"><section className="broadcast" aria-label="直播間">
         <div className="video-wrap"><div className="duo-section"><h2>雙 OBS 同台直播</h2><div className="duo-grid">{[{ path: 'live', name: room.host?.nickname || '第一台 OBS', userId: room.host?.userId }, { path: 'guest', name: room.guest?.nickname || '第二台 OBS', userId: room.guest?.userId }].map((source) => <Player key={source.path} path={source.path} name={source.name} silent={Boolean(user && source.userId === user.id)} live={connected && Boolean(state.sources?.[source.path]?.live)}/>)}</div></div><GiftOverlay gifts={gifts} onDone={() => setGifts((items) => items.slice(1))}/>{overlay && <div className={`stream-overlay ${overlay.type}`} role="status">{overlay.type === 'donation' ? <><strong>🎁 {overlay.nickname} 應援 {overlay.amount} 點</strong><span>謝謝支持！</span></> : <><strong>{overlay.nickname}</strong><span>{overlay.text}</span></>}</div>}<span className={`live-badge ${(state.live || state.sources?.guest?.live) && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live || state.sources?.guest?.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>

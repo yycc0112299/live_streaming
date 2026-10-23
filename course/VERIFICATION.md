@@ -261,3 +261,8 @@ OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome �
 - VM 部署更新至 main `2b6a9aa` 之後的同版程式，並以 `APP_BASE=/group9/` 重建；Apache 的 `/group9/assets/` Alias 已切到新版 release。公開 HTML、JS、CSS 與 `/group9/api/status` 均回 HTTP 200。
 - 公開服務設定 `PUBLIC_ORIGIN=https://group9liveb11302133.japaneast.cloudapp.azure.com`，HTTPS 訪客 session 可建立。390×844 瀏覽器驗證顯示雙 OBS、六級禮物、Enter 傳送、點數語音留言及 1000 示範點數，沒有橫向版面溢出。
 - Azure VM 必須保持執行，公開網址才可使用；停止後再次啟動仍沿用同一網址。本次沒有使用實體手機與行動網路驗收，不能把 390px 瀏覽器驗證當成不同電信網路的實機證明。
+
+## 2026-10-23 分享網址與 QR Code
+
+- 「分享直播間」改為兩個明確選項：複製目前直播網址，或在瀏覽器本機產生可掃描的 QR Code；QR 產生不呼叫第三方服務。
+- 使用 MIT 授權的 `qrcode` 1.5.4，QR 內容與畫面上的唯讀網址相同。桌面與 390×844 手機版實際操作均顯示完整視窗與 QR Code。

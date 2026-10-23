@@ -10,4 +10,7 @@ test('viewer UI keeps normal chat silent, Enter-native, and exposes all gift and
   assert.match(source, /一般聊天不會朗讀/);
   assert.match(source, /GIFTS\.map/);
   assert.match(source, /<OBSControls/);
+  assert.match(source, /QRCode\.toDataURL\(shareUrl/);
+  assert.match(source, />複製網址</);
+  assert.match(source, />顯示 QR Code</);
 });

@@ -132,6 +132,33 @@ h1 em {
   background:#151c29;
   white-space:nowrap
 }
+.share-dialog {
+  position:fixed;
+  inset:50% auto auto 50%;
+  transform:translate(-50%,-50%);
+  z-index:30;
+  width:min(420px,calc(100vw - 32px));
+  padding:22px;
+  color:#eef4ff;
+  background:#111823;
+  border:1px solid #344052;
+  border-radius:16px;
+  box-shadow:0 24px 80px #000b
+}
+.share-dialog::backdrop { background:#050810b8 }
+.share-dialog-heading,.share-options {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px
+}
+.share-dialog h2 { margin:0 }
+.share-dialog p,.share-dialog label,.qr-code span { color:#aeb9c9;font-size:13px }
+.share-dialog label { display:grid;gap:6px;margin-top:16px }
+.share-dialog input { width:100% }
+.share-options button { flex:1 }
+.qr-code { display:grid;justify-items:center;gap:8px;margin-top:18px }
+.qr-code img { width:min(280px,100%);border-radius:10px;background:#fff }
 .room-grid {
   display:grid;
   grid-template-columns:minmax(0,1fr) 300px;

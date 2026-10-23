@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-23",
+  "sourceCommit": "d031b6d92e5b523a01b7123189b8cd21680c5602",
+  "environment": "Windows localhost, actual single OBS, RTMP/H.264/AAC to MediaMTX HLS",
+  "courseTestsPassed": 21,
+  "rootTestsPassed": 6,
+  "productionBuildPassed": true,
+  "actualSingleOBS": true,
+  "secondPhysicalOBS": false,
+  "aecAcceptance": false,
+  "roomInitializedWithLocalFixture": true,
+  "guestParticipant": "labelled offline placeholder",
+  "browserChatEnterPassed": true,
+  "giftAmounts": [
+    10,
+    25,
+    50
+  ],
+  "voiceMessagePoints": 10,
+  "voiceSpeakerAudibilityChecked": false,
+  "transactions": 4,
+  "viewerInitialPoints": 100,
+  "viewerPointsAfterReload": 5,
+  "hostReceivedPoints": 95,
+  "ledgerVerified": true,
+  "azureDeployment": "blocked: Portal Run Command loading failed, then PageLoadTimeout; prior temporary SSH key not authorized",
+  "obsController": "not tested: automatic approval rejected process launch with blocked by policy",
+  "screenshots": "Saved privately under course/.runtime/rehearsal-*-20261023.jpg; real desktop/camera screenshots not committed"
+}

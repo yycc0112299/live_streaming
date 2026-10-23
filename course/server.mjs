@@ -164,7 +164,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   timer.unref();
   void poll();
   io.on('connection', (socket) => {
-    if (socket.handshake.auth?.obsPair) { obsControls.attach(socket); return; }
+    if (socket.handshake.auth?.obsPair || socket.handshake.auth?.obsDevice) { obsControls.attach(socket); return; }
     socket.data.token = cookieToken(socket.request);
     socket.data.user = secureTransport(socket.request) ? store.session(socket.data.token) : null;
     socket.data.authorized = () => !socket.data.user || Boolean(store.session(socket.data.token));

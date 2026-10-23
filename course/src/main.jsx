@@ -1,5 +1,5 @@
 import OBSControls from './OBSControls.jsx';
-import { GIFTS } from '../gifts.mjs';
+import { enqueueGift, GIFTS, VOICE_MESSAGE_POINTS } from '../gifts.mjs';
 import GiftOverlay from './GiftOverlay.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -77,6 +77,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [accountsAvailable, setAccountsAvailable] = useState(false);
   const [room, setRoom] = useState({ host: null, guest: null, broadcastId: null });
+  const [roomRequests, setRoomRequests] = useState([]);
   const [chatSettings, setChatSettings] = useState({ announcement: '', slowSeconds: 1 });
   const [pendingDonation, setPendingDonation] = useState(null);
   const [speechText, setSpeechText] = useState('');
@@ -120,17 +121,19 @@ function App() {
       if (giftIds.current.has(gift.id)) return;
       giftIds.current.add(gift.id);
       if (giftIds.current.size > 1000) giftIds.current.delete(giftIds.current.values().next().value);
-      setGifts((items) => [...items, gift]);
       if (gift.message && 'speechSynthesis' in window) {
+        setOverlay({ ...gift, type: 'speech', text: gift.message });
+        window.clearTimeout(window.__group9OverlayTimer);
+        window.__group9OverlayTimer = window.setTimeout(() => setOverlay(null), 5000);
         const speech = new SpeechSynthesisUtterance(gift.message);
         speech.lang = 'zh-TW'; speech.rate = 1.05; speech.volume = 0.9;
         window.speechSynthesis.speak(speech);
-      }
+      } else setGifts((items) => enqueueGift(items, gift));
     };
     const onLike = ({ likes }) => { setState((value) => ({ ...value, likes })); setHeart((n) => n + 1); };
     const onDeleted = (id) => { setMessages((items) => items.filter((message) => message.id !== id)); setOverlay((value) => value?.id === id ? null : value); };
     const onState = (value) => { setState(value); setRoom(value.room || { host: null, guest: null, broadcastId: null }); };
-    socket.on('connect', onConnect).on('disconnect', onDisconnect).on('state', onState).on('account', setUser).on('room:state', setRoom).on('chat:settings', setChatSettings).on('chat:deleted', onDeleted).on('history', setMessages).on('chat', onMessage).on('donation', onDonation).on('like', onLike);
+    socket.on('connect', onConnect).on('disconnect', onDisconnect).on('state', onState).on('account', setUser).on('room:state', setRoom).on('room:requests', setRoomRequests).on('chat:settings', setChatSettings).on('chat:deleted', onDeleted).on('history', setMessages).on('chat', onMessage).on('donation', onDonation).on('like', onLike);
     socket.on('connect_error', onDisconnect);
     reloadAccount().catch(onError);
     return () => { socket.removeAllListeners(); socket.disconnect(); window.speechSynthesis?.cancel(); window.clearTimeout(window.__group9OverlayTimer); };
@@ -181,9 +184,11 @@ function App() {
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
         <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 雙 OBS</span></div>
         <section className="gift-shop" aria-label="直播禮物"><div className="gift-shop-heading"><strong>送禮物</strong><span>我的點數 <b>{user?.points || 0}</b> · 本場應援 <b>{state.supportTotal || 0}</b></span></div><div className="gift-options">{GIFTS.map(({ amount, name, icon, kind }) => <button className={`gift-option gift-option-${kind}`} title={`${name} ${amount} 點`} key={amount} disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}><span className="gift-option-icon" aria-hidden="true">{icon}</span><span>{name}</span><b>{amount} 點</b></button>)}</div>{pendingDonation && <div className="pending-donation"><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>重試同一筆禮物</button><button disabled={donating} onClick={() => setPendingDonation(null)}>關閉待確認</button></div>}</section>
-        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim()) donate(10, speechText.trim()); }}><label>點數語音留言（10 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < 10 || donating || Boolean(pendingDonation) || !speechText.trim()}>花 10 點送出語音留言</button><p className="muted">一般聊天不會朗讀。只有成功扣點的語音留言才會播放；內容依序朗讀，瀏覽器可能需要先點一下網頁才能出聲。</p></form>
+        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim()) donate(VOICE_MESSAGE_POINTS, speechText.trim()); }}><label>點數語音留言（{VOICE_MESSAGE_POINTS} 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < VOICE_MESSAGE_POINTS || donating || Boolean(pendingDonation) || !speechText.trim()}>花 {VOICE_MESSAGE_POINTS} 點送出語音留言</button><p className="muted">語音留言是獨立項目，不會顯示成火箭。測試版為 {VOICE_MESSAGE_POINTS} 點，正式版預定提高為 50 點。</p></form>
         <div className="play-hint">觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。{!useWebRTC && 'HLS 影音會比聊天稍晚。'}</div>
         {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError}/>}
+        {user && room.host && !room.guest && room.host.userId !== user.id && !management && <section className="management" aria-label="申請第二位主播"><h2>加入直播</h2><p>送出申請後，第一位主播按同意即可讓你使用第二路。</p><button disabled={roomBusy} onClick={() => roomAction('room:request')}>{roomBusy ? '申請中…' : '申請成為第二位主播'}</button></section>}
+        {room.host?.userId === user?.id && roomRequests.length > 0 && <section className="management" aria-label="第二位主播申請"><h2>第二位主播申請</h2>{roomRequests.map((request) => <div key={request.userId}><span>{request.nickname}</span> <button disabled={roomBusy} onClick={() => roomAction('room:approve', request.userId)}>同意加入</button></div>)}</section>}
         {management && !room.host && <section className="management" aria-label="重新開啟點數應援"><h2>點數應援已結束</h2><p>重新開啟後，觀眾即可再次送禮物與點數語音留言。</p><button disabled={roomBusy} onClick={() => roomAction('room:start', { audioChecklist: true })}>{roomBusy ? '開啟中…' : '重新開啟點數應援'}</button></section>}
         {management && room.host && !room.guest && room.host.userId !== user.id && <section className="management" aria-label="第二位主播加入"><h2>第二位主播加入</h2><p>在第二台電腦完成 OBS 與 AEC 設定後，按一下即可占用第二路；第一位主播不用操作。</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>以第二位主播加入</button></section>}
         {management && room.host && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname || '等待自行加入'}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">主持人登入後會自動建立直播間；第二位自行加入。結束記帳不會遙控 OBS。</p></section>}

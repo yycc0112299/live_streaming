@@ -8,17 +8,23 @@ export function createOBSControls(io, store, secureTransport) {
     throw new Error('你不是本場上鏡主播。');
   }
   function attach(socket, account) {
-    if (socket.handshake.auth?.obsPair) {
+    if (socket.handshake.auth?.obsPair || socket.handshake.auth?.obsDevice) {
       const code = socket.handshake.auth.obsPair;
-      const ticket = tickets.get(code); tickets.delete(code);
-      const user = ticket && store.session(ticket.session);
+      const ticket = code && tickets.get(code); if (code) tickets.delete(code);
+      const user = ticket ? store.session(ticket.session) : store.obsDevice(socket.handshake.auth.obsDevice);
       try {
-        if (!secureTransport(socket.request) || !user || ticket.expires < Date.now() || pathFor(user) !== ticket.path) throw new Error('OBS 配對碼無效或已過期');
+        if (!secureTransport(socket.request) || !user || (ticket && ticket.expires < Date.now())) throw new Error('OBS 配對碼無效或已過期');
+        if (!ticket && user.trustedSecond) {
+          const room = store.room();
+          if (room.host && !room.guest && room.host.userId !== user.id) { store.join(user.id); io.emit('room:state', store.room()); }
+        }
+        const path = pathFor(user);
+        if (ticket && path !== ticket.path) throw new Error('OBS 配對碼無效或已過期');
         controllers.get(user.id)?.socket.disconnect(true);
-        socket.data.token = ticket.session; socket.data.obsController = true;
-        socket.data.authorized = () => Boolean(store.session(ticket.session));
-        controllers.set(user.id, { socket, path: ticket.path });
-        socket.emit('obs:bound', { path: ticket.path });
+        socket.data.token = ticket?.session; socket.data.obsController = true;
+        socket.data.authorized = () => ticket ? Boolean(store.session(ticket.session)) : Boolean(store.obsDevice(socket.handshake.auth.obsDevice));
+        controllers.set(user.id, { socket, path });
+        socket.emit('obs:bound', { path });
         socket.on('disconnect', () => { if (controllers.get(user.id)?.socket === socket) controllers.delete(user.id); });
       } catch (error) { socket.emit('obs:error', error.message); socket.disconnect(true); }
       return true;
@@ -32,6 +38,11 @@ export function createOBSControls(io, store, secureTransport) {
         tickets.set(code, { userId: user.id, session: socket.data.token, path, expires: Date.now() + 300000 });
         ack({ code, path });
       } catch (error) { ack({ error: error.message }); }
+    });
+    socket.on('obs:device', (ack) => {
+      if (typeof ack !== 'function') return;
+      try { const user = account(); pathFor(user); ack({ token: store.newOBSDevice(user.id) }); }
+      catch (error) { ack({ error: error.message }); }
     });
     socket.on('obs:control', async (value, ack) => {
       if (typeof ack !== 'function') return;

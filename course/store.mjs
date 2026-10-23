@@ -1,4 +1,4 @@
-import { GIFTS } from './gifts.mjs';
+import { GIFTS, VOICE_MESSAGE_POINTS } from './gifts.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -19,7 +19,7 @@ export function openStore(path) {
   const db = new DatabaseSync(path);
   if (path !== ':memory:') chmodSync(path, 0o600);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
-    CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, nickname TEXT NOT NULL, password TEXT NOT NULL, salt TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('viewer','host','admin')), points INTEGER NOT NULL DEFAULT 1000 CHECK(points>=0), created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, nickname TEXT NOT NULL, password TEXT NOT NULL, salt TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('viewer','host','admin')), points INTEGER NOT NULL DEFAULT 1000 CHECK(points>=0), created_at TEXT NOT NULL, trusted_second INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS broadcasts(id TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id), guest_id TEXT REFERENCES users(id), started_at TEXT NOT NULL, ended_at TEXT);
     CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
@@ -29,6 +29,7 @@ export function openStore(path) {
     CREATE TABLE IF NOT EXISTS mutes(user_id TEXT PRIMARY KEY REFERENCES users(id), until_ms INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY, message_id TEXT NOT NULL REFERENCES messages(id), reporter_id TEXT NOT NULL REFERENCES users(id), reason TEXT NOT NULL, created_at TEXT NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, UNIQUE(message_id,reporter_id));
     CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY, actor_id TEXT NOT NULL REFERENCES users(id), action TEXT NOT NULL, details TEXT NOT NULL, at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS obs_devices(token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS app_migrations(name TEXT PRIMARY KEY, applied_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS messages_time ON messages(at);
     CREATE INDEX IF NOT EXISTS messages_user ON messages(user_id);
@@ -48,6 +49,7 @@ export function openStore(path) {
   }
   if (!db.prepare('PRAGMA table_info(donations)').all().some((column) => column.name === 'message')) db.exec("ALTER TABLE donations ADD COLUMN message TEXT NOT NULL DEFAULT ''");
   if (!db.prepare('PRAGMA table_info(broadcasts)').all().some((column) => column.name === 'guest_id')) db.exec('ALTER TABLE broadcasts ADD COLUMN guest_id TEXT REFERENCES users(id)');
+  if (!db.prepare('PRAGMA table_info(users)').all().some((column) => column.name === 'trusted_second')) db.exec('ALTER TABLE users ADD COLUMN trusted_second INTEGER NOT NULL DEFAULT 0');
   const get = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
   const run = (sql, ...args) => db.prepare(sql).run(...args);
@@ -56,7 +58,7 @@ export function openStore(path) {
     try { const value = fn(); db.exec('COMMIT'); return value; }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   };
-  function user(id) { return get("SELECT id,username,nickname,role,points,(password='') AS isGuest FROM users WHERE id=?", id); }
+  function user(id) { return get("SELECT id,username,nickname,role,points,(password='') AS isGuest,trusted_second AS trustedSecond FROM users WHERE id=?", id); }
   function session(token) {
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return null;
     const row = get('SELECT user_id FROM sessions WHERE token=? AND expires>?', hash(token), Date.now());
@@ -90,6 +92,17 @@ export function openStore(path) {
     const token = randomBytes(32).toString('hex');
     run('INSERT INTO sessions VALUES(?,?,?)', hash(token), id, Date.now() + 7 * 86400000);
     return token;
+  }
+  function newOBSDevice(id) {
+    const token = randomBytes(32).toString('hex');
+    run('DELETE FROM obs_devices WHERE user_id=?', id);
+    run('INSERT INTO obs_devices VALUES(?,?,?)', hash(token), id, new Date().toISOString());
+    return token;
+  }
+  function obsDevice(token) {
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return null;
+    const row = get('SELECT user_id FROM obs_devices WHERE token=?', hash(token));
+    return row ? user(row.user_id) : null;
   }
   function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: row.slow_seconds, words: JSON.parse(row.words) }; }
   function history() { return all('SELECT id,user_id AS userId,nickname,text,at FROM (SELECT rowid AS sequence,* FROM messages WHERE deleted=0 ORDER BY rowid DESC LIMIT 100) ORDER BY sequence'); }
@@ -138,7 +151,7 @@ export function openStore(path) {
     if (!GIFTS.some((gift) => gift.amount === amount) || typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(requestId) || typeof broadcastId !== 'string') throw new Error('應援金額或請求 ID 無效。');
     if (typeof message !== 'string') throw new Error('語音留言格式錯誤。');
     const speech = message ? checkText(message, 120, '語音留言') : '';
-    if (speech && amount !== 10) throw new Error('語音留言需花費 10 示範點數。');
+    if (speech && amount !== VOICE_MESSAGE_POINTS) throw new Error(`語音留言需花費 ${VOICE_MESSAGE_POINTS} 示範點數。`);
     return transaction(() => {
       const old = get('SELECT * FROM donations WHERE sender_id=? AND request_id=?', sender.id, requestId);
       if (old) {
@@ -172,7 +185,8 @@ export function openStore(path) {
     const row = get('SELECT * FROM broadcasts WHERE ended_at IS NULL ORDER BY rowid DESC LIMIT 1');
     return row ? { broadcastId: row.id, host: { userId: row.host_id, nickname: user(row.host_id).nickname, path: 'live' }, guest: row.guest_id ? { userId: row.guest_id, nickname: user(row.guest_id).nickname, path: 'guest' } : null } : { broadcastId: null, host: null, guest: null };
   }
-  return { db, user, guest, register, login, session, newSession, settings, history, sendChat, moderate, report, donate, ledger, room,
+  return { db, user, guest, register, login, session, newSession, newOBSDevice, obsDevice, settings, history, sendChat, moderate, report, donate, ledger, room,
+    authorizeHost: (id) => { if (!run("UPDATE users SET role='host',trusted_second=1 WHERE id=? AND role IN ('viewer','host')", id).changes) throw new Error('找不到可授權的第二位主播。'); return user(id); },
     logout: (token) => run('DELETE FROM sessions WHERE token=?', hash(token || '')),
     rename: (id, name) => { const nickname = checkText(name, 24, '暱稱'); run('UPDATE users SET nickname=? WHERE id=?', nickname, id); return nickname; },
     start: (id, guestUsername) => transaction(() => {

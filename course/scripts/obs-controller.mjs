@@ -4,9 +4,10 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { io } from 'socket.io-client';
 import { controlOBS } from './obs-actions.mjs';
-const [site, code] = process.argv.slice(2);
+const [site, code, ...flags] = process.argv.slice(2);
+const device = flags.includes('--device'); const autoStart = flags.includes('--start');
 const url = new URL(site);
-if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) || !/^[a-f0-9]{48}$/.test(code || '')) throw Error('Use HTTPS (or localhost), plus the one-time pairing code from your broadcaster page.');
+if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) || !(device ? /^[a-f0-9]{64}$/ : /^[a-f0-9]{48}$/).test(code || '')) throw Error('Use HTTPS (or localhost), plus the pairing credential from your broadcaster page.');
 const config = JSON.parse(await readFile(join(process.env.APPDATA, 'obs-studio/plugin_config/obs-websocket/config.json'), 'utf8'));
 const ws = new WebSocket(`ws://127.0.0.1:${config.server_port}`);
 const pending = new Map(); let sequence = 0;
@@ -29,15 +30,18 @@ function request(requestType, requestData = {}) {
     pending.set(requestId, { resolve, reject, timer }); ws.send(JSON.stringify({ op: 6, d: { requestId, requestType, requestData } }));
   });
 }
-const socket = io(url.origin, { path: `${url.pathname.replace(/\/$/, '')}/socket.io`, transports: ['websocket'], auth: { obsPair: code }, reconnection: false });
+const socket = io(url.origin, { path: `${url.pathname.replace(/\/$/, '')}/socket.io`, transports: ['websocket'], auth: device ? { obsDevice: code } : { obsPair: code }, reconnection: false });
 let path;
-socket.on('obs:bound', (value) => { path = value.path; console.log(`Local OBS controls connected for ${path}. Keep this terminal running.`); });
+socket.on('obs:bound', async (value) => {
+  path = value.path; console.log(`Local OBS controls connected for ${path}. Keep this terminal running.`);
+  if (autoStart) { const current = await request('GetStreamStatus'); if (!current.outputActive) await request('StartStream'); }
+});
 socket.on('obs:execute', async (value, ack) => {
   try { if (!path) throw Error('Controller not paired'); ack(await controlOBS(request, path, value)); }
   catch (error) { ack({ error: error.message }); }
 });
 socket.on('obs:error', (message) => console.error(message));
-socket.on('connect_error', () => { console.error('Cannot reach course website'); ws.close(); });
-socket.on('disconnect', () => { ws.close(); });
+socket.on('connect_error', () => { console.error('Cannot reach course website'); if (!device) ws.close(); });
+socket.on('disconnect', () => { if (device) setTimeout(() => socket.connect(), 3000); else ws.close(); });
 ws.addEventListener('close', () => { socket.disconnect(); for (const request of pending.values()) { clearTimeout(request.timer); request.reject(Error('OBS disconnected')); } pending.clear(); });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { socket.disconnect(); ws.close(); });

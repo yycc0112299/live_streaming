@@ -6,3 +6,8 @@ export const GIFTS = [
   { amount: 50, name: '星光派對', icon: '🎆', kind: 'party', duration: 4800 },
   { amount: 100, name: '夢幻嘉年華', icon: '🎠', kind: 'carnival', duration: 6000 },
 ];
+
+export const VOICE_MESSAGE_POINTS = 10;
+export const FORMAL_VOICE_MESSAGE_POINTS = 50;
+
+export const enqueueGift = (items, gift) => [...items, gift].sort((a, b) => b.amount - a.amount);

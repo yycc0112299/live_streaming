@@ -225,6 +225,25 @@ test('first host opens a waiting room automatically and an authorized second hos
   assert.equal(joined.host.userId, firstUser.id); assert.equal(joined.guest.userId, secondUser.id);
   first.disconnect();
 });
+test('viewer requests the second slot and the current host approves it for this room', async (t) => {
+  const s = await setup(t);
+  const { socket: host } = await member(t, s, 'RequestHost', 'host');
+  const { socket: viewer, user } = await member(t, s, 'RequestViewer');
+  const received = once(host, 'room:requests');
+  assert.deepEqual(await emit(viewer, 'room:request'), { ok: true });
+  assert.equal((await received)[0][0].userId, user.id);
+  assert.ok((await emit(viewer, 'room:approve', user.id)).error);
+  const approved = await emit(host, 'room:approve', user.id);
+  assert.equal(approved.guest.userId, user.id);
+  assert.equal(s.app.store.user(user.id).role, 'host');
+  assert.equal(s.app.store.user(user.id).trustedSecond, 1);
+  const device = await emit(viewer, 'obs:device'); assert.match(device.token, /^[a-f0-9]{64}$/);
+  assert.ok((await emit(host, 'room:approve', user.id)).error);
+  await emit(host, 'room:end'); await emit(host, 'room:start', { audioChecklist: true });
+  const controller = await client(t, s.url, { auth: { obsDevice: device.token } });
+  assert.equal(controller.connected, true);
+  assert.equal(s.app.store.room().guest.userId, user.id);
+});
 test('HTTP accounts rotate sessions, reject cross-origin, and revoke active sockets on logout', async (t) => {
   const s = await setup(t);
   const post = (action, payload, cookie, origin = s.url) => fetch(`${s.url}/api/account/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify(payload) });

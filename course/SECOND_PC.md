@@ -2,7 +2,7 @@
 
 ## 先看目前是否能連（2026-10-23）
 
-**程式已合併到 main，但 Azure 公開站尚未部署雙主播新版。第二位目前不能只靠填 OBS 設定就完成整套功能。** 本次查核公開 `/group9/api/status` 回傳 `live=false`，且 `/group9/api/account/me` 回應 404；這是舊版服務，不是第二位電腦設定錯誤。先請管理者完成下方準備，再照第二位的步驟操作。
+**Azure 公開站已部署雙主播版。第二位不需要 SSH 金鑰，也不必由第一位主播操作；但不能只讀 GitHub 就直接推流。** 第一次仍須由管理者建立 `host` 帳號、私下提供第二路 OBS 推流金鑰，並把第二位目前的公開 IP 加入 TCP 1936 白名單。GitHub 不會保存私人推流金鑰。
 
 - 觀看及主播網頁：<https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/>
 - OBS 伺服器：`rtmps://group9liveb11302133.japaneast.cloudapp.azure.com:1936`

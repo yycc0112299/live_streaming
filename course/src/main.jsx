@@ -81,8 +81,6 @@ function App() {
   const [pendingDonation, setPendingDonation] = useState(null);
   const [speechText, setSpeechText] = useState('');
   const [donating, setDonating] = useState(false);
-  const [guestUsername, setGuestUsername] = useState('');
-  const [audioChecklist, setAudioChecklist] = useState(false);
   const [roomBusy, setRoomBusy] = useState(false);
   const [gifts, setGifts] = useState([]);
   const giftIds = useRef(new Set());
@@ -168,7 +166,7 @@ function App() {
   }
   async function roomAction(event) {
     setRoomBusy(true);
-    try { await command(event, event === 'room:start' ? { guestUsername, audioChecklist } : undefined); }
+    try { await command(event); }
     catch (error) { onError(error); }
     finally { setRoomBusy(false); }
   }
@@ -186,7 +184,8 @@ function App() {
         <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim()) donate(10, speechText.trim()); }}><label>點數語音留言（10 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!connected || !user || !room.host || room.host.userId === user.id || user.points < 10 || donating || Boolean(pendingDonation) || !speechText.trim()}>花 10 點送出語音留言</button><p className="muted">一般聊天不會朗讀。只有成功扣點的語音留言才會播放；內容依序朗讀，瀏覽器可能需要先點一下網頁才能出聲。</p></form>
         <div className="play-hint">觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。{!useWebRTC && 'HLS 影音會比聊天稍晚。'}</div>
         {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError}/>}
-        {management && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2>{room.host ? <><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">結束記帳不會遙控 OBS；兩台電腦仍需各自按「停止串流」。</p></> : <form className="account-form" onSubmit={(event) => { event.preventDefault(); roomAction('room:start'); }}><label>第二台參與者帳號<input required maxLength="64" value={guestUsername} onChange={(e) => setGuestUsername(e.target.value)}/></label><label className="checklist"><input type="checkbox" checked={audioChecklist} onChange={(e) => setAudioChecklist(e.target.checked)}/>兩台均已啟動 AEC Browser Source、停用原始麥克風與桌面音訊</label><button disabled={!audioChecklist || roomBusy}>開啟雙 OBS 直播間</button></form>}</section>}
+        {management && room.host && !room.guest && room.host.userId !== user.id && <section className="management" aria-label="第二位主播加入"><h2>第二位主播加入</h2><p>在第二台電腦完成 OBS 與 AEC 設定後，按一下即可占用第二路；第一位主播不用操作。</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>以第二位主播加入</button></section>}
+        {management && room.host && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname || '等待自行加入'}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">主持人登入後會自動建立直播間；第二位自行加入。結束記帳不會遙控 OBS。</p></section>}
       </section>
       <aside className="chat-panel" aria-label="即時聊天室"><div className="chat-heading"><h2>即時聊天室 <span>LIVE CHAT</span></h2><span className="chat-dot"/></div>
         {chatSettings.announcement && <div className="announcement" role="status">📌 {chatSettings.announcement}</div>}

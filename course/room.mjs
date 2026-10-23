@@ -3,7 +3,14 @@ export function createOBSRoom(io, store) {
   const state = () => store.room();
   const notify = () => io.emit('room:state', state());
   function attach(socket) {
+    const initial = store.session(socket.data.token);
+    if (initial?.role === 'host' && !state().host) store.start(initial.id);
     socket.emit('room:state', state());
+    socket.on('room:join', (ack) => {
+      if (typeof ack !== 'function') return;
+      try { const account = store.session(socket.data.token); if (!account || !['host', 'admin'].includes(account.role)) throw new Error('需要第二位主播權限。'); store.join(account.id); notify(); ack({ ok: true, ...state() }); }
+      catch (error) { ack({ error: error.message }); }
+    });
     for (const action of ['start', 'end']) socket.on(`room:${action}`, (value, callback) => {
       const ack = typeof value === 'function' ? value : callback;
       if (typeof ack !== 'function') return;

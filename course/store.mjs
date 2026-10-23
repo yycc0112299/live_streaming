@@ -176,10 +176,22 @@ export function openStore(path) {
     logout: (token) => run('DELETE FROM sessions WHERE token=?', hash(token || '')),
     rename: (id, name) => { const nickname = checkText(name, 24, '暱稱'); run('UPDATE users SET nickname=? WHERE id=?', nickname, id); return nickname; },
     start: (id, guestUsername) => transaction(() => {
-      if (room().host) throw new Error('直播間已開啟，請先結束上一場。');
-      const guest = typeof guestUsername === 'string' && get('SELECT id FROM users WHERE username=?', guestUsername.toLowerCase());
-      if (!guest || guest.id === id) throw new Error('請填入另一位已註冊參與者的帳號。');
-      const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,guest_id,started_at) VALUES(?,?,?,?)', bid, id, guest.id, new Date().toISOString()); return bid;
+      const active = room();
+      const guest = guestUsername ? get('SELECT id FROM users WHERE username=?', guestUsername.toLowerCase()) : null;
+      if (guestUsername && (!guest || guest.id === id)) throw new Error('第二位參與者帳號無效。');
+      if (active.host) {
+        if (active.host.userId !== id || active.guest || !guest) throw new Error('直播間已開啟，請先結束上一場。');
+        run('UPDATE broadcasts SET guest_id=? WHERE id=?', guest.id, active.broadcastId); return active.broadcastId;
+      }
+      const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,guest_id,started_at) VALUES(?,?,?,?)', bid, id, guest?.id || null, new Date().toISOString()); return bid;
+    }),
+    join: (id) => transaction(() => {
+      const active = room();
+      if (!active.host) throw new Error('第一位主播尚未登入直播網站。');
+      if (active.host.userId === id) throw new Error('第一位主播不能加入第二路。');
+      if (active.guest && active.guest.userId !== id) throw new Error('第二位主播位置已有人使用。');
+      run('UPDATE broadcasts SET guest_id=? WHERE id=? AND guest_id IS NULL', id, active.broadcastId);
+      return active.broadcastId;
     }),
     end: (id) => run('UPDATE broadcasts SET ended_at=? WHERE id=? AND ended_at IS NULL', new Date().toISOString(), id),
     supportTotal: (id) => id ? get('SELECT COALESCE(SUM(amount),0) AS n FROM donations WHERE broadcast_id=?', id).n : 0,

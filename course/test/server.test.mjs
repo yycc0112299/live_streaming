@@ -215,6 +215,16 @@ test('fixed OBS room binds two accounts, rejects unauthorized control, and survi
   await new Promise((resolve) => setTimeout(resolve, 30));
   assert.equal((await (await fetch(s.url + '/api/status')).json()).room.broadcastId, result.broadcastId);
 });
+test('first host opens a waiting room automatically and an authorized second host joins without first-host action', async (t) => {
+  const s = await setup(t);
+  const { socket: first, user: firstUser } = await member(t, s, 'FirstHost', 'host');
+  const { socket: second, user: secondUser } = await member(t, s, 'SecondHost', 'host');
+  const { socket: viewer } = await member(t, s, 'Viewer');
+  assert.ok((await emit(viewer, 'room:join')).error);
+  const joined = await emit(second, 'room:join');
+  assert.equal(joined.host.userId, firstUser.id); assert.equal(joined.guest.userId, secondUser.id);
+  first.disconnect();
+});
 test('HTTP accounts rotate sessions, reject cross-origin, and revoke active sockets on logout', async (t) => {
   const s = await setup(t);
   const post = (action, payload, cookie, origin = s.url) => fetch(`${s.url}/api/account/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify(payload) });

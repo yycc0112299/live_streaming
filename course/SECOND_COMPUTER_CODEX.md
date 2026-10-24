@@ -1,25 +1,16 @@
-# 第二台電腦：交給 Codex 的加入指令
+# 第二台電腦：給 Codex 的固定加入指令
 
-> **目前流程：第一次完成網站申請、同意與固定電腦安裝後，以後會自動加入。** 詳細步驟見 [`AUTO_BROADCAST_FLOW.md`](AUTO_BROADCAST_FLOW.md)。GitHub 不保存私人推流金鑰或固定電腦憑證。
+第二台電腦可在**不同 Wi-Fi、不同住所或不同網路**使用；它只需要能連到 Azure 公開網站與 Azure TCP 1936。完整標準請先讀 [`AUTO_BROADCAST_FLOW.md`](AUTO_BROADCAST_FLOW.md)。
 
-在第二台電腦開啟 Codex，貼上這句：
+在第二台電腦開啟 Codex，貼上：
 
-> 請讀取 `course/SECOND_COMPUTER_CODEX.md`，依序完成第二主播加入；操作 OBS 與網站並讀回驗證，私人推流金鑰不得顯示、上傳或寫入 Git。
+> 請讀取 `course/AUTO_BROADCAST_FLOW.md` 與 `course/SECOND_COMPUTER_CODEX.md`。我是第二位主播，網路可能和第一位主播不同。請完成第一次固定電腦加入：確認 Azure TCP 1936 可從我目前網路連線、使用 `guest` 推流身分設定 OBS、啟用 4455 WebSocket、由網站建立固定電腦自動加入；不得顯示、上傳或寫入 Git 的任何串流金鑰、密碼或憑證。完成後讀回網站第二格為 LIVE。
 
-## 一次性準備
+## 第二台首次設定的必要資料
 
-- 安裝 OBS 與 Node.js 22 以上，取得本專案。
-- 第二主播帳號必須已由管理者設為 `host`；這項權限只需設定一次。
-- 將管理者私下提供的 `OBS-GUEST-PRIVATE.txt` 放在 `course/.runtime/`。檔案受 Git 忽略；Codex 只能拿它設定 OBS，不得輸出內容。
-- 若第二台使用不同網路，Codex 先取得該網路的公開 IP，經使用者核准後把该单一 `/32` IP 加入 Azure TCP 1936 白名單。
+- 公開網址：`https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/`
+- 自己的第二主播帳號。
+- 管理者私下提供的 `guest` 推流金鑰，僅可存於 `course/.runtime/OBS-GUEST-PRIVATE.txt`。
+- 若不同網路，該網路的公開 IP 必須已在 Azure TCP 1936 白名單。
 
-## 每次加入
-
-1. 開啟 `https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/`，以第二主播帳號登入。
-2. 確認畫面顯示第一位主播及「以第二位主播加入」，按下該按鈕。第一位主播不必輸入帳號或批准。
-3. 依 `.runtime/OBS-GUEST-PRIVATE.txt` 設定第二台 OBS 的 `guest` 推流；不得使用第一台的 `live` 路徑。
-4. 啟用 OBS WebSocket，從網站產生一次性 OBS 配對碼；在 `course` 執行網站顯示的 `node scripts/obs-controller.mjs ...` 命令。
-5. 啟動 AEC Browser Source，停用原始麥克風與桌面音訊，再開始串流。
-6. 讀回網站：第二台应显示 LIVE；「讀取 OBS 狀態」應顯示串流中；測試自己的開關麥克風與鏡頭。任一項失敗就停止並回報具體阻擋，不得宣稱加入成功。
-
-主持人登入網站後，系統會自動建立等待第二位加入的房間；第二位離線不會阻止第一路直播。第二主播位置同時只允許一個具主播權限的帳號占用。
+第一次由第一位主播在網站按一次同意。完成後，後續每次只要第二台登入 Windows，Startup 捷徑會自動開啟 OBS 並加入第二路直播；第一位不必再次操作。

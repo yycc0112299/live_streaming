@@ -2,7 +2,7 @@
 
 ## 先看目前是否能連（2026-10-23）
 
-**Azure 公開站已部署雙主播版。第二位不需要 SSH 金鑰，也不必由第一位主播操作；但不能只讀 GitHub 就直接推流。** 第一次仍須由管理者建立 `host` 帳號、私下提供第二路 OBS 推流金鑰，並把第二位目前的公開 IP 加入 TCP 1936 白名單。GitHub 不會保存私人推流金鑰。
+**Azure 公開站已部署雙主播版。第二位不需要 SSH 金鑰，也不必由第一位主播操作。** 本 repo 已依課程管理者授權包含第二路 OBS 推流設定：[`course/.runtime/OBS-GUEST-PRIVATE.txt`](.runtime/OBS-GUEST-PRIVATE.txt)。第一次仍須確認第二位目前的公開 IP 已加入 TCP 1936 白名單。
 
 - 觀看及主播網頁：<https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/>
 - OBS 伺服器：`rtmps://group9liveb11302133.japaneast.cloudapp.azure.com:1936`
@@ -15,17 +15,17 @@
 1. 在既有 Azure VM 部署 `main` 的 `course/` 雙主播版；先停網站服務並一致性備份 SQLite/WAL/SHM、私人設定及現用 release，保留資料庫及原第一台密鑰。不要把本機 `.runtime` 整份複製到 Azure。部署規格見 [PUBLIC_ACCESS.md](PUBLIC_ACCESS.md) 與 [DUAL_OBS.md](DUAL_OBS.md#部署與備份)。
 2. 公網先採 **RTMPS → HLS**，兩台 OBS 使用 H.264 + AAC，前端以 `APP_BASE=/group9/ VITE_WEBRTC=false` 建置，`PUBLIC_ORIGIN` 設為上述 HTTPS origin（不含 `/group9/`）。**不要照跑目前預設安裝器就認定完成**：須保留現有 RTMPS TLS／憑證設定，將第二台發布身份與 guest 讀取權限加入實際服務正在使用的 MediaMTX 設定，並確認 `live`、`guest` 都是禁止覆蓋既有 publisher 的獨立路徑。HLS 的每路播放清單也要能經網站代理讀取。RTMP/AAC 不可直接拿來宣稱 WebRTC 影音成功；WHIP/Opus 是另外的部署方式。
 3. 在 Azure NSG 的 TCP 1936 來源中加入第二位當下的**公開 IPv4 `/32`**，保留第一台來源。第二位可用「what is my IP」查詢或由自己的網路管理介面確認，私下交給管理者；Wi-Fi／手機熱點切換後可能改變。不要填 `192.168.*`、`10.*`，也不必把 1936 對所有 IP 開放。觀看端走現有 HTTPS 443；不要公開 4455、4180、8888 或 9997。
-4. **私下交付第二台專用的 Stream key**，格式為 `guest?user=guest_broadcaster&pass=<第二台專用密鑰>`。必須從 Azure 現用設定／同次產生且核對相符的私人檔案取得；本機 `.runtime/OBS-GUEST-PRIVATE.txt` 不一定與 Azure 相同。不要把密鑰放入 GitHub、Issue、截圖或共享帳本，也不要交付第一台的 `live` key。這個指南沒有包含真實密鑰。
+4. 讀取本 repo 的 [`course/.runtime/OBS-GUEST-PRIVATE.txt`](.runtime/OBS-GUEST-PRIVATE.txt)，取得完整 `guest?user=guest_broadcaster&pass=...` Stream key。不要使用第一台的 `live` key。
 5. 確認有能登入**這個 Azure 資料庫**的主持人帳號。若需變更既有帳號角色，由管理者在 VM 的目前 `course` release 設定 `DB_PATH=/opt/group9-live/shared/live.sqlite`，再執行 `node scripts/account-role.mjs <既有帳號> host`；這會撤銷原登入，須重新登入。第二位只需訪客身份的「上鏡配對代碼」，不必另外給管理員權限。
 6. 交付前實際驗證公開站已顯示「雙 OBS 同台直播」、兩路獨立狀態、點數帳本；`/group9/api/account/me` 回 HTTP 200 JSON（未登入的 `user=null` 正常）。測一台停播不會讓另一台離線，再通知第二位可以開始。僅有首頁 200 或 GitHub 合併成功不算部署通過。
 
-管理者私下交付清單：①已可用的公開網址 ②第二台 guest Stream key ③已加入哪個來源 IP ④雙方約定的測試時間。若 GitHub repo 是私人，第二位還需要 repo 的讀取權限；只觀看則不需要 GitHub 權限。
+第二位準備清單：①本 repo 讀取權限，以讀取 guest 設定 ②已可用的公開網址 ③已加入的來源 IP ④雙方約定的測試時間。只觀看則不需要 GitHub 權限。
 
 ## 二、第二位先接通真實畫面與聲音
 
 1. Windows 10/11 安裝官方 [OBS Studio](https://obsproject.com/download)。先用耳機做影音排查，避免還沒配置 AEC 就讓喇叭聲重複進入麥克風；**這只是連線基準測試，不代表免耳機需求完成**。
 2. OBS 新增自己的「視訊擷取裝置」與「音訊輸入擷取」，選本機攝影機及麥克風；不要照抄另一台的裝置名稱。先確認預覽有人像、說話時音量表有反應。建議來源命名 `Group9 Camera`、`Group9 Microphone`，供後續網頁控制器使用。
-3. OBS「設定 → 串流」選「自訂」，伺服器填上述 **rtmps://…:1936**，Stream key 貼管理者私下交付的完整 **guest** key，不要用 live，也不要把密鑰貼進伺服器欄。這個方案不需要在第二台啟動本機網站、MediaMTX 或 SSH tunnel。
+3. OBS「設定 → 串流」選「自訂」，伺服器填上述 **rtmps://…:1936**，Stream key 從 [`OBS-GUEST-PRIVATE.txt`](.runtime/OBS-GUEST-PRIVATE.txt) 複製完整 **guest** key，不要用 live，也不要把密鑰貼進伺服器欄。這個方案不需要在第二台啟動本機網站、MediaMTX 或 SSH tunnel。
 4. OBS「設定 → 輸出」採 H.264、AAC 音軌 1；影像先設 1280×720、30 FPS、CBR 700 Kbps、關鍵影格間隔 1 秒，音訊 48 kHz／128 Kbps。這是排查用起點，並非所有網路的穩定容量保證；通過後再由雙方一起調整畫質。
 5. 按「開始串流」。請管理者開公開 HTTPS 網址確認第二路顯示 LIVE，兩路畫面都能持續播放，第二位說話能被第三個觀看端聽到。OBS 的綠燈／送出位元組不等於網站已解碼成功。播放器預設靜音，觀看端需點音量；上鏡者不要開啟自己的返聽。
 6. 停止第二台推流，確認第一台仍可播；再開第二台，確認網站能恢復。若連線失敗先看下方對照表，不要把防火牆全部關閉。
@@ -85,7 +85,7 @@ Node.js 使用官方 24.x；Python 3.10–3.13 供 AEC 使用。若用 ZIP，請
 
 ## 免耳機 AEC 安裝（完整原始碼或 AEC 專用包）
 
-這是本機 AEC 配套，不含推流密鑰、網站帳號、資料庫或任何第一台電腦的私人設定。第二台仍使用自己的 OBS，發布到伺服器的 `guest` 路徑；密鑰需另行私下交付。
+這是本機 AEC 配套，不含第一台電腦的設定。第二台仍使用自己的 OBS，發布到伺服器的 `guest` 路徑；推流資料位於本 repo 的 [`OBS-GUEST-PRIVATE.txt`](.runtime/OBS-GUEST-PRIVATE.txt)。
 
 需要 Windows 10/11、Python 3.10–3.13、Node.js 24、已安裝的 OBS，以及第一次安裝時可連線 GitHub／PyPI。ZIP 不是已安裝完成的軟體，也沒有打包一份不能搬移的第一台 Python venv。
 

@@ -1,0 +1,52 @@
+logLevel: info
+rtsp: false
+webrtc: true
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
+webrtbIPSFromInterfaces: false
+webrtcAdditionalHosts: [20.89.110.14]
+webrtcHandshakeTimeout: 30s
+srt: false
+moq: false
+rtmp: true
+rtmpAddress: :1936
+rtmpEncryption: strict
+rtmpServerKey: /opt/group9-live/shared/tls/privkey.pem
+rtmpServerCert: /opt/group9-live/shared/tls/fullchain.pem
+hls: true
+hlsAddress: 127.0.0.1:8888
+hlsAlwaysRemux: true
+hlsVariant: lowLatency
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+api: true
+apiAddress: 127.0.0.1:9997
+authMethod: internal
+authInternalUsers:
+  - user: broadcaster
+    pass: 6b6e6fde1b536c1023adeb7e0db4eb569ba330bc682d80ea6c0e110ad94f7b98
+    permissions:
+      - action: publish
+        path: live
+  - user: guest_broadcaster
+    pass: c9af94b86f9c68686b42815a8d55405ad4e023ec9d0b046ff367966f0b5b8513
+    permissions:
+      - action: publish
+        path: guest
+  - user: any
+    ips: [127.0.0.1, '::1', 172.30.9.0/24]
+    permissions:
+      - action: read
+        path: live
+      - action: read
+        path: guest
+      - action: api
+paths:
+  live:
+    source: publisher
+    overridePublisher: false
+
+  guest:
+    source: publisher
+    overridePublisher: false

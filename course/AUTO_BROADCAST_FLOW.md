@@ -1,6 +1,6 @@
 # Group 9 標準開播流程
 
-這份文件是本專案每次開播的唯一標準。兩台電腦不必在同一個 Wi-Fi；兩台都只連到 Azure 的公開網址與 RTMPS 推流入口。
+這份流程由 [DUAL_LIVE_RUNBOOK.md](DUAL_LIVE_RUNBOOK.md) 取代為目前唯一標準；該文件包含「全部關閉」的完整重啟順序、可直接貼給兩台 Codex 的提示詞，以及最新疑難排解連結。兩台電腦不必在同一個 Wi-Fi；兩台都只連到 Azure 的公開網址與 RTMPS 推流入口。
 
 公開直播網址：`https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/`
 

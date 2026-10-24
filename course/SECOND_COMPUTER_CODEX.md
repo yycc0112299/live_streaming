@@ -4,7 +4,7 @@
 
 在第二台電腦開啟 Codex，貼上：
 
-> 請讀取 `course/AUTO_BROADCAST_FLOW.md` 與 `course/SECOND_COMPUTER_CODEX.md`。我是第二位主播，網路可能和第一位主播不同。請完成第一次固定電腦加入：確認 Azure TCP 1936 可從我目前網路連線、使用 `guest` 推流身分設定 OBS、啟用 4455 WebSocket、由網站建立固定電腦自動加入；直接使用專案已保存的設定檔，但不得在終端或回覆中輸出其內容。完成後讀回網站第二格為 LIVE。
+> 請讀取 `course/DUAL_LIVE_RUNBOOK.md`、`course/TROUBLESHOOTING.md` 與 `course/SECOND_COMPUTER_CODEX.md`。我是第二位主播，網路可能和第一位主播不同。請完成第一次固定電腦加入：確認 Azure TCP 1936 可從我目前網路連線、使用 `guest` 推流身分設定 OBS、啟用 4455 WebSocket、由網站建立固定電腦自動加入；直接使用本機已保存的設定檔，但不得在終端或回覆中輸出其內容。完成後讀回網站第二格為 LIVE。
 
 ## 第二台首次設定的必要資料
 

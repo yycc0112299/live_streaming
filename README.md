@@ -2,7 +2,7 @@
 
 ## Group 9 course final version
 
-**兩台固定電腦請先讀：[固定化自動開播流程](course/AUTO_BROADCAST_FLOW.md)**。第二位第一次可在網站申請，第一位同意後會保存為固定第二主播；完成固定電腦安装後，日後登入 Windows 會自動開啟 OBS、加入空的第二路並開始推流。完整故障排查見 [第二台電腦加入直播的完整步驟](course/SECOND_PC.md)。
+**兩台固定電腦請先讀：[雙主播開播 Runbook](course/DUAL_LIVE_RUNBOOK.md)**。它涵蓋 Azure VM、兩個 `/32` RTMPS 規則、第一／第二台 OBS 與雙路 LIVE 驗證；故障請看 [疑難排解](course/TROUBLESHOOTING.md)。第二位第一次完成固定電腦設定後，日後登入 Windows 會自動開啟 OBS 並開始自己的第二路推流。
 
 2026-10-23 update: the Azure site now runs `course/` with **two fixed OBS computers in one viewing page**, persistent SQLite accounts, chat moderation, and an atomic/idempotent demo support ledger. A pinned open-source AEC Client engine feeds an OBS Browser Source through a local driver-free bridge. See **[DUAL_OBS.md](course/DUAL_OBS.md)** for setup and acceptance limits. The two physical speaker/microphone systems still need a no-headphones test.
 

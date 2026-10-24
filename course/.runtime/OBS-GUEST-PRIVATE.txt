@@ -1,5 +1,5 @@
 Second OBS computer only
-RTMP server: rtmp://127.0.0.1:1935
+RTMPS server: rtmps://group9liveb11302133.japaneast.cloudapp.azure.com:1936
 Stream key: guest?user=guest_broadcaster&pass=c9af94b86f9c68686b42815a8d55405ad4e023ec9d0b046ff367966f0b5b8513
 WHIP server: http://127.0.0.1:8889/guest/whip
 WHIP Bearer Token: guest_broadcaster:c9af94b86f9c68686b42815a8d55405ad4e023ec9d0b046ff367966f0b5b8513

@@ -1,7 +1,0 @@
-OBS Settings > Stream
-Service: Custom
-Server: rtmp://127.0.0.1:1935
-Stream key: live?user=broadcaster&pass=6b6e6fde1b536c1023adeb7e0db4eb569ba330bc682d80ea6c0e110ad94f7b98
-Video: H.264, 1280x720, 30 FPS, keyframe interval 1 s, CBR 2500 Kbps
-Audio: AAC, 48 kHz, 128 Kbps
-Keep this file private. Do not commit, share, or screenshot the stream key.

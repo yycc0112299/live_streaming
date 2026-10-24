@@ -224,7 +224,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     });
     handle('chat:review', () => {
       if (!['host', 'admin'].includes(account().role)) throw new Error('需要聊天室管理權限。');
-      return { reports: store.reports(), audit: store.audit(), settings: store.settings() };
+      return { reports: store.reports(), mutes: store.mutes(), audit: store.audit(), settings: store.settings() };
     });
     socket.on('disconnect', broadcast);
   });

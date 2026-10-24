@@ -107,19 +107,21 @@ test('paid voice messages charge once, persist and enforce mute, words and text 
     const host = store.guest(), sender = store.guest();
     store.db.prepare("UPDATE users SET role='host' WHERE id=?").run(host.id); host.role = 'host';
     const bid = store.start(host.id, sender.username);
-    const value = { amount: 10, requestId: crypto.randomUUID(), broadcastId: bid, message: '想說的話' };
+    const value = { amount: 25, requestId: crypto.randomUUID(), broadcastId: bid, message: '想說的話' };
     const receipt = store.donate(sender, value, bid); assert.equal(receipt.message, value.message);
-    assert.equal(store.user(sender.id).points, 990); assert.equal(store.donate(sender, value, bid).duplicate, true);
+    assert.equal(store.user(sender.id).points, 975); assert.equal(store.donate(sender, value, bid).duplicate, true);
     assert.equal(store.ledger(sender).transactions[0].message, value.message);
+    assert.throws(() => store.donate(sender, { ...value, requestId: crypto.randomUUID(), message: '再一句話' }, bid), /60 秒/);
     assert.throws(() => store.donate(sender, { ...value, message: '另一句話' }, bid), /請求 ID/);
     const invalid = (change) => ({ ...value, requestId: crypto.randomUUID(), ...change });
     assert.throws(() => store.donate(sender, invalid({ amount: 1 }), bid));
     assert.throws(() => store.donate(sender, invalid({ message: 'x'.repeat(121) }), bid));
     assert.throws(() => store.donate(sender, invalid({ message: {} }), bid));
-    store.moderate(host, { action: 'settings', announcement: '', slowSeconds: 1, words: ['blocked'] });
+    store.moderate(host, { action: 'settings', announcement: '', slowSeconds: 5, words: ['blocked'] });
     assert.throws(() => store.donate(sender, invalid({ message: 'BLOCKED' }), bid), /限制詞/);
     store.moderate(host, { action: 'mute', userId: sender.id, minutes: 10 });
     assert.throws(() => store.donate(sender, invalid({}), bid), /禁言/);
-    assert.equal(store.user(sender.id).points, 990); assert.equal(store.ledger(host).received, 10);
+    assert.equal(store.user(sender.id).points, 975); assert.equal(store.ledger(host).received, 25);
   } finally { store.close(); }
 });
+

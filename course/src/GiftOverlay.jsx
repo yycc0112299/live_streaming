@@ -18,7 +18,7 @@ export default function GiftOverlay({ gifts, onDone }) {
     return () => clearTimeout(timer);
   }, [current?.id]);
   if (!gift) return null;
-  return <div key={current.id} className={`gift-stage gift-${gift.kind}`} role="status" aria-label={`${current.nickname} 送出 ${gift.name} ${gift.amount} 點`}>
+  return <div key={current.id} className={`gift-stage gift-${gift.kind}`} style={{ '--gift-scale': gift.amount / 100 }} role="status" aria-label={`${current.nickname} 送出 ${gift.name} ${gift.amount} 點`}>
     <div className="gift-halo"/><div className="gift-sprite" aria-hidden="true"><GiftArt gift={gift}/></div>
     <div className="gift-sparkles" aria-hidden="true">{Array.from({ length: gift.amount >= 50 ? 24 : 8 }, (_, i) => <i key={i} style={{ '--i': i }}>{gift.kind === 'rose' ? '🌸' : gift.kind === 'heart' ? '♥' : '✦'}</i>)}</div>
     <div className="gift-caption"><strong>{current.nickname}</strong><span>送出 {gift.name} · {gift.amount} 點</span>{current.message && <p>{current.message}</p>}</div>

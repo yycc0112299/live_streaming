@@ -11,7 +11,41 @@
   box-sizing:border-box
 }
 body {
-  margin:0
+  margin:0;
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+  background:
+    radial-gradient(ellipse at 8% 8%, #263d78 0, transparent 32%),
+    radial-gradient(ellipse at 92% 20%, #471d70 0, transparent 30%),
+    radial-gradient(ellipse at 50% 100%, #123c4b 0, transparent 38%),
+    #080c16
+}
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:.32;
+  background-image:
+    linear-gradient(#5de1ff12 1px,transparent 1px),
+    linear-gradient(90deg,#5de1ff12 1px,transparent 1px),
+    linear-gradient(125deg,transparent 0 48%,#8f6cff12 49%,transparent 50% 100%);
+  background-size:48px 48px,48px 48px,100% 100%;
+  mask-image:linear-gradient(to bottom,#fff,transparent 88%)
+}
+body::after {
+  content:'';
+  position:fixed;
+  width:620px;
+  height:620px;
+  right:-220px;
+  bottom:-260px;
+  pointer-events:none;
+  border-radius:50%;
+  background:#27d8ff18;
+  filter:blur(20px)
 }
 button,input,textarea {
   font:inherit
@@ -47,7 +81,12 @@ a {
   padding:0 4.5%;
   display:flex;
   align-items:center;
-  gap:28px
+  gap:28px;
+  position:relative;
+  z-index:1;
+  background:linear-gradient(90deg,#0b1220d9,#14122bd9,#0b1220d9);
+  box-shadow:0 1px 0 #5de1ff28,0 12px 34px #0005;
+  backdrop-filter:blur(14px)
 }
 .brand {
   display:flex;
@@ -98,7 +137,9 @@ a {
 main {
   max-width:1400px;
   padding:48px 48px 0;
-  margin:auto
+  margin:auto;
+  position:relative;
+  z-index:1
 }
 .eyebrow {
   color:#78e1c2;
@@ -129,7 +170,9 @@ h1 em {
 }
 .share {
   font-size:13px;
-  background:#151c29;
+  background:#18213ae6;
+  border-color:#5269a4;
+  box-shadow:0 0 18px #405de52b;
   white-space:nowrap
 }
 .share-dialog {
@@ -161,7 +204,7 @@ h1 em {
 .qr-code img { width:min(280px,100%);border-radius:10px;background:#fff }
 .room-grid {
   display:grid;
-  grid-template-columns:minmax(0,1fr) 300px;
+  grid-template-columns:minmax(0,1fr) 360px;
   gap:24px
 }
 .broadcast {
@@ -172,7 +215,8 @@ h1 em {
   border:1px solid #293141;
   border-radius:14px;
   overflow:hidden;
-  background:#090d15
+  background:#090d15;
+  box-shadow:0 18px 50px #0008,0 0 0 1px #54d9ff16,0 0 28px #574de42b
 }
 .player {
   aspect-ratio:16/9;
@@ -308,12 +352,15 @@ video {
 .chat-panel {
   border:1px solid #293141;
   border-radius:14px;
-  background:#121824;
+  background:linear-gradient(165deg,#111b31f2,#0c1322f2 70%,#10182cf2);
+  border-color:#3c5686;
+  box-shadow:0 18px 50px #0008,0 0 24px #4f5bdf24;
+  backdrop-filter:blur(14px)
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  min-height:420px;
-  max-height:620px;
+  min-height:520px;
+  max-height:760px;
   align-self:start;
   position:sticky;
   top:12px
@@ -323,7 +370,8 @@ video {
   display:flex;
   justify-content:space-between;
   align-items:center;
-  border-bottom:1px solid #293141
+  border-bottom:1px solid #3b5a86;
+  background:linear-gradient(90deg,#17294a,#17172f)
 }
 .chat-heading h2 {
   font-size:14px;
@@ -361,7 +409,7 @@ video {
 .messages {
   flex:1;
   min-height:100px;
-  max-height:330px;
+  max-height:430px;
   overflow-y:auto;
   padding:12px 20px;
   scrollbar-width:thin;
@@ -531,7 +579,7 @@ footer {
     padding:30px 24px 0
   }
   .room-grid {
-    grid-template-columns:minmax(0,1fr) 280px;
+    grid-template-columns:minmax(0,1fr) 320px;
     gap:16px
   }
   .course-tag {
@@ -636,7 +684,7 @@ footer {
 .account-form input,.inline-form input { border:1px solid #384457; padding:8px; border-radius:6px; background:#0c121e; color:#e8edf7; max-width:100%; min-width:0; }
 .announcement { padding:12px 18px; background:#273b37; font-size:13px; overflow-wrap:anywhere; }
 .message-tools { display:flex; flex-wrap:wrap; gap:6px; }
-.message-tools button { font-size:11px; padding:2px 6px; }
+.message-tools button { font-size:10px; padding:2px 5px; }
 .table-scroll { overflow:auto; }
 .ledger table { border-collapse:collapse; font-size:12px; width:100%; }
 .ledger td,.ledger th { text-align:left; border-bottom:1px solid #303949; padding:8px; }
@@ -645,14 +693,15 @@ footer {
 @media(max-width:900px) { .gift-options { grid-template-columns:repeat(3,1fr); } }
 
 .gift-stage { position:absolute; inset:0; z-index:8; overflow:hidden; pointer-events:none; display:grid; place-items:center; border-radius:14px; }
-.gift-sprite { position:relative; font-size:clamp(64px,12vw,150px); filter:drop-shadow(0 12px 18px #0008); animation:gift-pop 1s ease both; }
+.gift-sprite { position:relative; font-size:clamp(64px,12vw,150px); filter:drop-shadow(0 12px 18px #0008); animation:gift-pop 1s ease both; transform:scale(calc(.35 + var(--gift-scale) * .65)); }
 .gift-caption { position:absolute; bottom:9%; left:8%; right:8%; padding:14px; text-align:center; background:#101527e8; border:1px solid #ffffff40; border-radius:16px; color:white; }
 .gift-caption strong,.gift-caption span { display:block; }
 .gift-caption span { color:#ffe29c; margin-top:5px; }
 .gift-halo { position:absolute; width:55%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,#ff558050,transparent 70%); }
 .gift-sparkles { position:absolute; inset:0; }
 .gift-sparkles i { position:absolute; left:calc(5% + mod(var(--i) * 13,90) * 1%); top:65%; color:#ffda69; font-size:24px; font-style:normal; animation:gift-rise 2s calc(var(--i) * .07s) ease-out infinite; }
-.gift-heart .gift-sprite { color:#ff568c; animation:gift-beat .7s ease infinite alternate; }
+.gift-heart { place-items:end start; padding:12px 0 12px 18px; }
+.gift-heart .gift-sprite { width:42px; color:#ff568c; animation:gift-beat .7s ease infinite alternate; transform:scale(.8); }
 .gift-rose .gift-sprite { animation:gift-sway 1s ease-in-out infinite alternate; }
 .gift-rocket .gift-sprite { animation:gift-launch 3.4s ease-in both; }
 .gift-car .gift-sprite { animation:gift-drive 4s ease both; }
@@ -671,6 +720,7 @@ footer {
 @keyframes gift-spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .gift-stage * { animation:none!important; } }
 
+.gift-rose .gift-sprite { width:20%; max-width:150px; }
 .gift-car .gift-sprite { width:78%; max-width:620px; }
 .gift-rocket .gift-sprite { width:28%; max-width:200px; }
 .gift-carnival .gift-sprite { width:92%; max-width:750px; animation:gift-pop 1s ease both; }

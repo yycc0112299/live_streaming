@@ -104,7 +104,7 @@ export function openStore(path) {
     const row = get('SELECT user_id FROM obs_devices WHERE token=?', hash(token));
     return row ? user(row.user_id) : null;
   }
-  function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: row.slow_seconds, words: JSON.parse(row.words) }; }
+  function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: Math.max(5, row.slow_seconds), words: JSON.parse(row.words) }; }
   function history() { return all('SELECT id,user_id AS userId,nickname,text,at FROM (SELECT rowid AS sequence,* FROM messages WHERE deleted=0 ORDER BY rowid DESC LIMIT 100) ORDER BY sequence'); }
   function audit(actor, action, details) { run('INSERT INTO audit VALUES(?,?,?,?,?)', randomUUID(), actor, action, JSON.stringify(details), new Date().toISOString()); }
   function sendChat(account, text) {
@@ -113,7 +113,7 @@ export function openStore(path) {
     if ((get('SELECT until_ms FROM mutes WHERE user_id=?', account.id)?.until_ms || 0) > Date.now()) throw new Error('目前已被禁言。');
     if (config.words.some((word) => clean.toLocaleLowerCase().includes(word.toLocaleLowerCase()))) throw new Error('訊息包含聊天室限制詞。');
     const previous = get('SELECT at FROM messages WHERE user_id=? ORDER BY rowid DESC LIMIT 1', account.id);
-    if (previous && Date.now() - Date.parse(previous.at) < config.slowSeconds * 1000) throw new Error(`訊息傳送太快，請稍候 ${config.slowSeconds} 秒。`);
+    if (previous && Date.now() - Date.parse(previous.at) < 5000) throw new Error('訊息傳送太快，請稍候 5 秒。');
     const message = { id: randomUUID(), userId: account.id, nickname: account.nickname, text: clean, at: new Date().toISOString() };
     run('INSERT INTO messages(id,user_id,nickname,text,at) VALUES(?,?,?,?,?)', message.id, message.userId, message.nickname, message.text, message.at);
     return message;
@@ -124,7 +124,7 @@ export function openStore(path) {
       const { action } = value || {};
       if (action === 'settings') {
         const { announcement, slowSeconds, words } = value;
-        if (typeof announcement !== 'string' || announcement.length > 300 || /[\p{Cc}\p{Cf}]/u.test(announcement) || !Number.isInteger(slowSeconds) || slowSeconds < 1 || slowSeconds > 120 || !Array.isArray(words) || words.length > 50) throw new Error('公告、慢速秒數或限制詞格式錯誤。');
+        if (typeof announcement !== 'string' || announcement.length > 300 || /[\p{Cc}\p{Cf}]/u.test(announcement) || !Number.isInteger(slowSeconds) || slowSeconds < 5 || slowSeconds > 120 || !Array.isArray(words) || words.length > 50) throw new Error('公告、慢速秒數或限制詞格式錯誤。');
         const cleanWords = words.map((word) => checkText(word, 40, '限制詞'));
         run('UPDATE settings SET announcement=?,slow_seconds=?,words=? WHERE id=1', announcement, slowSeconds, JSON.stringify(cleanWords));
       } else if (action === 'delete') {
@@ -161,6 +161,8 @@ export function openStore(path) {
       if (speech) {
         if (get('SELECT until_ms FROM mutes WHERE user_id=?', sender.id)?.until_ms > Date.now()) throw new Error('禁言期間不能使用語音留言。');
         if (settings().words.some((word) => speech.toLowerCase().includes(word.toLowerCase()))) throw new Error('語音留言含有聊天室限制詞。');
+        const previousSpeech = get("SELECT created_at FROM donations WHERE sender_id=? AND message<>'' ORDER BY rowid DESC LIMIT 1", sender.id);
+        if (previousSpeech && Date.now() - Date.parse(previousSpeech.created_at) < 60000) throw new Error('語音留言傳送太快，請稍候 60 秒。');
       }
       const room = get('SELECT * FROM broadcasts WHERE id=? AND ended_at IS NULL', broadcastId);
       if (!room || broadcastId !== activeBroadcast) throw new Error('本場直播已結束，請重新確認。');
@@ -210,6 +212,7 @@ export function openStore(path) {
     end: (id) => run('UPDATE broadcasts SET ended_at=? WHERE id=? AND ended_at IS NULL', new Date().toISOString(), id),
     supportTotal: (id) => id ? get('SELECT COALESCE(SUM(amount),0) AS n FROM donations WHERE broadcast_id=?', id).n : 0,
     reports: () => all('SELECT r.id,r.reason,r.created_at AS at,m.id AS messageId,m.text,m.nickname,m.user_id AS userId FROM reports r JOIN messages m ON m.id=r.message_id WHERE r.resolved=0 ORDER BY r.rowid DESC LIMIT 100'),
+    mutes: () => all('SELECT m.user_id AS userId,u.nickname,m.until_ms AS untilMs FROM mutes m JOIN users u ON u.id=m.user_id WHERE m.until_ms>? ORDER BY m.until_ms DESC', Date.now()),
     audit: () => all('SELECT actor_id AS actorId,action,details,at FROM audit ORDER BY rowid DESC LIMIT 100'),
     close: () => db.close(),
   };

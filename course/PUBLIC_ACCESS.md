@@ -32,8 +32,8 @@ PR #2 已合併至 main，但公開 HTTPS 網站仍顯示舊版單主播介面�
 ## 2026-10-23 已套用的公網設定
 
 - Azure DNS：`group9liveb11302133.japaneast.cloudapp.azure.com`，解析至既有 VM `20.89.110.14`。
-- NSG 新增 TCP 443 `HTTPS_443`，以及 TCP 1936 `RTMPS_1936_HOST_IP`，來源限制為部署當下主播來源 `101.14.11.195/32`。第二台主播換網路後，需新增其公開來源 CIDR。
+- NSG 新增 TCP 443 `HTTPS_443`，以及 TCP 1936 的第一、第二主播來源規則；第二台主播換網路後，需新增其公開來源 CIDR。
 - Let's Encrypt 憑證已由 Certbot 申請並交給 Apache，公開 HTTPS `/group9/` 回應 200；憑證到期日為 2027-01-20，已啟用自動續期。
-- MediaMTX 已備份設定後改用 TLS strict、監聽 `*:1936`；原本 `127.0.0.1:1935` 不再監聽。公開 API、HLS 上游及 Node 管理埠仍未公開。
+- MediaMTX 已備份設定後改用 TLS strict、監聽 `*:1936`；原本 `127.0.0.1:1935` 不再監聽。現用設定已包含 `guest_broadcaster` 對 `guest` 的 publish 權限、`guest` 獨立 path，以及觀眾的 `guest` read 權限；更新後需確認 `group9-media.service` 為 active 且 1936 仍在監聽。公開 API、HLS 上游及 Node 管理埠仍未公開。
 - 使用 Azure VM Run Command 完成部署，未建立 SSH 金鑰，因而沒有短期私鑰需要清除。
-- 本機驗證：HTTPS 443 與 RTMPS 1936 TCP 可連線，`https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/api/status` 回應 200。尚未用手機行動網路實際播放，也尚未用 OBS 以 RTMPS 1936 推流驗收。
+- 本機驗證：HTTPS 443 與 RTMPS 1936 TCP 可連線，`https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/api/status` 回應 200。尚未用手機行動網路實際播放；第二主播須以真實 OBS 重推並確認 sent bytes 與 `guestLive=true` 才算驗收。

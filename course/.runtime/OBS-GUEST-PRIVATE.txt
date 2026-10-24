@@ -1,0 +1,7 @@
+Second OBS computer only
+RTMP server: rtmp://127.0.0.1:1935
+Stream key: guest?user=guest_broadcaster&pass=c9af94b86f9c68686b42815a8d55405ad4e023ec9d0b046ff367966f0b5b8513
+WHIP server: http://127.0.0.1:8889/guest/whip
+WHIP Bearer Token: guest_broadcaster:c9af94b86f9c68686b42815a8d55405ad4e023ec9d0b046ff367966f0b5b8513
+Use an SSH tunnel to the same server. WHIP: H.264 + Opus. RTMP: H.264 + AAC.
+Do not share or commit this file. The first computer keeps its existing live credentials.

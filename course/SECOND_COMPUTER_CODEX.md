@@ -4,13 +4,14 @@
 
 在第二台電腦開啟 Codex，貼上：
 
-> 請讀取 `course/AUTO_BROADCAST_FLOW.md` 與 `course/SECOND_COMPUTER_CODEX.md`。我是第二位主播，網路可能和第一位主播不同。請完成第一次固定電腦加入：確認 Azure TCP 1936 可從我目前網路連線、使用 `guest` 推流身分設定 OBS、啟用 4455 WebSocket、由網站建立固定電腦自動加入；不得顯示、上傳或寫入 Git 的任何串流金鑰、密碼或憑證。完成後讀回網站第二格為 LIVE。
+> 請讀取 `course/AUTO_BROADCAST_FLOW.md` 與 `course/SECOND_COMPUTER_CODEX.md`。我是第二位主播，網路可能和第一位主播不同。請完成第一次固定電腦加入：確認 Azure TCP 1936 可從我目前網路連線、使用 `guest` 推流身分設定 OBS、啟用 4455 WebSocket、由網站建立固定電腦自動加入；直接使用專案已保存的設定檔，但不得在終端或回覆中輸出其內容。完成後讀回網站第二格為 LIVE。
 
 ## 第二台首次設定的必要資料
 
 - 公開網址：`https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/`
 - 自己的第二主播帳號。
-- 管理者私下提供的 `guest` 推流金鑰，僅可存於 `course/.runtime/OBS-GUEST-PRIVATE.txt`。
+- 專案已保存的 `course/.runtime/OBS-GUEST-PRIVATE.txt`。
 - 若不同網路，該網路的公開 IP 必須已在 Azure TCP 1936 白名單。
 
 第一次由第一位主播在網站按一次同意。完成後，後續每次只要第二台登入 Windows，Startup 捷徑會自動開啟 OBS 並加入第二路直播；第一位不必再次操作。
+

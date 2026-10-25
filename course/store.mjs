@@ -224,6 +224,13 @@ export function openStore(path) {
     }),
     end: (id) => run('UPDATE broadcasts SET ended_at=? WHERE id=? AND ended_at IS NULL', new Date().toISOString(), id),
     setDonationsEnabled: (enabled) => { run('UPDATE settings SET donations_enabled=? WHERE id=1', enabled ? 1 : 0); return Boolean(enabled); },
+    ensureDonationRoom: () => transaction(() => {
+      const active = room();
+      if (active.host || !settings().donationsEnabled) return active.broadcastId;
+      const admin = get("SELECT id FROM users WHERE role='admin' ORDER BY rowid LIMIT 1");
+      if (!admin) return null;
+      const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,started_at) VALUES(?,?,?)', bid, admin.id, new Date().toISOString()); return bid;
+    }),
     supportTotal: (id) => id ? get('SELECT COALESCE(SUM(amount),0) AS n FROM donations WHERE broadcast_id=?', id).n : 0,
     reports: () => all('SELECT r.id,r.reason,r.created_at AS at,m.id AS messageId,m.text,m.nickname,m.user_id AS userId FROM reports r JOIN messages m ON m.id=r.message_id WHERE r.resolved=0 ORDER BY r.rowid DESC LIMIT 100'),
     mutes: () => all('SELECT m.user_id AS userId,u.nickname,m.until_ms AS untilMs FROM mutes m JOIN users u ON u.id=m.user_id WHERE m.until_ms>? ORDER BY m.until_ms DESC', Date.now()),

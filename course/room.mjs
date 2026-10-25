@@ -1,7 +1,7 @@
 // Both fixed OBS computers publish to MediaMTX; this module controls their one shared room.
 export function createOBSRoom(io, store) {
   const requests = new Map();
-  const state = () => store.room();
+  const state = () => { const current = store.room(); if (current.donationsEnabled && !current.host) store.ensureDonationRoom(); return store.room(); };
   const notify = () => io.emit('room:state', state());
   const pending = () => [...requests.values()];
   const notifyRequests = () => {

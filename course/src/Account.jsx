@@ -7,6 +7,7 @@ export default function Account({ user, available, onChange, command, onError, s
   const ledgerRequest = useRef(0);
   const [loadingLedger, setLoadingLedger] = useState(false);
   async function loadLedger(before = null) {
+    if (user?.role === 'viewer') return;
     const request = ++ledgerRequest.current;
     setLoadingLedger(true);
     try {

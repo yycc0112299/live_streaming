@@ -57,6 +57,7 @@ test('ledger pages preserve privacy and do not skip old rows after a new donatio
     const make = (username) => store.register({ username, nickname: username, password: 'a-long-test-password' });
     const host = await make('host'); const sender = await make('sender'); const other = await make('other');
     store.db.prepare("UPDATE users SET role='host' WHERE id=?").run(host.id);
+    store.db.prepare("UPDATE users SET role='host' WHERE id IN (?,?)").run(sender.id, other.id);
     const broadcastId = store.start(host.id, 'sender');
     const donate = (user) => store.donate(user, { amount: 1, requestId: crypto.randomUUID(), broadcastId }, broadcastId);
     for (let i = 0; i < 100; i++) donate(sender);

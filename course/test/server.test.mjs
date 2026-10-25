@@ -188,9 +188,9 @@ test('moderation requires a role; deletion, mute, reports, slow mode and words a
   const reconnected = await client(t, s.url, { extraHeaders: { Cookie: `group9_session=${token}` } });
   assert.match((await emit(reconnected, 'chat', 'bypass mute')).error, /禁言/);
   await emit(host, 'chat:manage', { action: 'mute', userId: user.id, minutes: 0 });
-  await emit(host, 'chat:manage', { action: 'settings', announcement: 'Welcome', slowSeconds: 30, words: ['blocked'] });
+  await emit(host, 'chat:manage', { action: 'settings', announcement: 'Welcome', slowSeconds: 30, voiceCooldownSeconds: 0, words: ['blocked'] });
   assert.match((await emit(a, 'chat', 'BLOCKED')).error, /限制詞/);
-  assert.match((await emit(reconnected, 'chat', 'too soon')).error, /太快/);
+  assert.match((await emit(reconnected, 'chat', 'too soon')).error, /太快.*30 秒/);
   const review = await emit(host, 'chat:review');
   assert.equal(review.settings.announcement, 'Welcome'); assert.equal(review.audit.length, 4);
   await emit(host, 'chat:manage', { action: 'resolve', reportId: review.reports[0].id });

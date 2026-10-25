@@ -20,7 +20,7 @@ test('SQLite reopen retains accounts, sessions, balanced ledger, chat deletion, 
     const message = store.sendChat(viewer, 'persistent message');
     store.moderate(host, { action: 'delete', messageId: message.id });
     store.moderate(host, { action: 'mute', userId: viewer.id, minutes: 10 });
-    store.moderate(host, { action: 'settings', announcement: 'persist this', slowSeconds: 5, words: ['testword'] });
+    store.moderate(host, { action: 'settings', announcement: 'persist this', slowSeconds: 5, voiceCooldownSeconds: 60, words: ['testword'] });
     // A failing transaction must leave both balance and ledger unchanged.
     store.db.exec("CREATE TRIGGER fail_donation BEFORE INSERT ON donations BEGIN SELECT RAISE(ABORT,'forced failure'); END;");
     assert.throws(() => store.donate(viewer, { ...value, requestId: crypto.randomUUID() }, broadcastId), /forced failure/);
@@ -112,16 +112,18 @@ test('paid voice messages charge once, persist and enforce mute, words and text 
     assert.equal(store.user(sender.id).points, 975); assert.equal(store.donate(sender, value, bid).duplicate, true);
     assert.equal(store.ledger(sender).transactions[0].message, value.message);
     assert.throws(() => store.donate(sender, { ...value, requestId: crypto.randomUUID(), message: '再一句話' }, bid), /60 秒/);
+    store.moderate(host, { action: 'settings', announcement: '', slowSeconds: 5, voiceCooldownSeconds: 0, words: [] });
+    assert.equal(store.donate(sender, { ...value, requestId: crypto.randomUUID(), message: '不等待' }, bid).message, '不等待');
     assert.throws(() => store.donate(sender, { ...value, message: '另一句話' }, bid), /請求 ID/);
     const invalid = (change) => ({ ...value, requestId: crypto.randomUUID(), ...change });
     assert.throws(() => store.donate(sender, invalid({ amount: 1 }), bid));
     assert.throws(() => store.donate(sender, invalid({ message: 'x'.repeat(121) }), bid));
     assert.throws(() => store.donate(sender, invalid({ message: {} }), bid));
-    store.moderate(host, { action: 'settings', announcement: '', slowSeconds: 5, words: ['blocked'] });
+    store.moderate(host, { action: 'settings', announcement: '', slowSeconds: 5, voiceCooldownSeconds: 0, words: ['blocked'] });
     assert.throws(() => store.donate(sender, invalid({ message: 'BLOCKED' }), bid), /限制詞/);
     store.moderate(host, { action: 'mute', userId: sender.id, minutes: 10 });
     assert.throws(() => store.donate(sender, invalid({}), bid), /禁言/);
-    assert.equal(store.user(sender.id).points, 975); assert.equal(store.ledger(host).received, 25);
+    assert.equal(store.user(sender.id).points, 950); assert.equal(store.ledger(host).received, 50);
   } finally { store.close(); }
 });
 

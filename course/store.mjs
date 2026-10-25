@@ -24,7 +24,7 @@ export function openStore(path) {
     CREATE TABLE IF NOT EXISTS broadcasts(id TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id), guest_id TEXT REFERENCES users(id), started_at TEXT NOT NULL, ended_at TEXT);
     CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
     CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), nickname TEXT NOT NULL, text TEXT NOT NULL, at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), announcement TEXT NOT NULL DEFAULT '', slow_seconds INTEGER NOT NULL DEFAULT 1, words TEXT NOT NULL DEFAULT '[]');
+    CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), announcement TEXT NOT NULL DEFAULT '', slow_seconds INTEGER NOT NULL DEFAULT 1, voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60, words TEXT NOT NULL DEFAULT '[]');
     INSERT OR IGNORE INTO settings(id) VALUES(1);
     CREATE TABLE IF NOT EXISTS mutes(user_id TEXT PRIMARY KEY REFERENCES users(id), until_ms INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY, message_id TEXT NOT NULL REFERENCES messages(id), reporter_id TEXT NOT NULL REFERENCES users(id), reason TEXT NOT NULL, created_at TEXT NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, UNIQUE(message_id,reporter_id));
@@ -50,6 +50,7 @@ export function openStore(path) {
   if (!db.prepare('PRAGMA table_info(donations)').all().some((column) => column.name === 'message')) db.exec("ALTER TABLE donations ADD COLUMN message TEXT NOT NULL DEFAULT ''");
   if (!db.prepare('PRAGMA table_info(broadcasts)').all().some((column) => column.name === 'guest_id')) db.exec('ALTER TABLE broadcasts ADD COLUMN guest_id TEXT REFERENCES users(id)');
   if (!db.prepare('PRAGMA table_info(users)').all().some((column) => column.name === 'trusted_second')) db.exec('ALTER TABLE users ADD COLUMN trusted_second INTEGER NOT NULL DEFAULT 0');
+  if (!db.prepare('PRAGMA table_info(settings)').all().some((column) => column.name === 'voice_cooldown_seconds')) db.exec('ALTER TABLE settings ADD COLUMN voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60');
   const get = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
   const run = (sql, ...args) => db.prepare(sql).run(...args);
@@ -104,7 +105,7 @@ export function openStore(path) {
     const row = get('SELECT user_id FROM obs_devices WHERE token=?', hash(token));
     return row ? user(row.user_id) : null;
   }
-  function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: Math.max(5, row.slow_seconds), words: JSON.parse(row.words) }; }
+  function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: Math.max(5, row.slow_seconds), voiceCooldownSeconds: Math.max(0, Math.min(3600, row.voice_cooldown_seconds)), words: JSON.parse(row.words) }; }
   function history() { return all('SELECT id,user_id AS userId,nickname,text,at FROM (SELECT rowid AS sequence,* FROM messages WHERE deleted=0 ORDER BY rowid DESC LIMIT 100) ORDER BY sequence'); }
   function audit(actor, action, details) { run('INSERT INTO audit VALUES(?,?,?,?,?)', randomUUID(), actor, action, JSON.stringify(details), new Date().toISOString()); }
   function sendChat(account, text) {
@@ -113,7 +114,7 @@ export function openStore(path) {
     if ((get('SELECT until_ms FROM mutes WHERE user_id=?', account.id)?.until_ms || 0) > Date.now()) throw new Error('目前已被禁言。');
     if (config.words.some((word) => clean.toLocaleLowerCase().includes(word.toLocaleLowerCase()))) throw new Error('訊息包含聊天室限制詞。');
     const previous = get('SELECT at FROM messages WHERE user_id=? ORDER BY rowid DESC LIMIT 1', account.id);
-    if (previous && Date.now() - Date.parse(previous.at) < 5000) throw new Error('訊息傳送太快，請稍候 5 秒。');
+    if (previous && Date.now() - Date.parse(previous.at) < config.slowSeconds * 1000) throw new Error(`訊息傳送太快，請稍候 ${config.slowSeconds} 秒。`);
     const message = { id: randomUUID(), userId: account.id, nickname: account.nickname, text: clean, at: new Date().toISOString() };
     run('INSERT INTO messages(id,user_id,nickname,text,at) VALUES(?,?,?,?,?)', message.id, message.userId, message.nickname, message.text, message.at);
     return message;
@@ -123,10 +124,10 @@ export function openStore(path) {
     return transaction(() => {
       const { action } = value || {};
       if (action === 'settings') {
-        const { announcement, slowSeconds, words } = value;
-        if (typeof announcement !== 'string' || announcement.length > 300 || /[\p{Cc}\p{Cf}]/u.test(announcement) || !Number.isInteger(slowSeconds) || slowSeconds < 5 || slowSeconds > 120 || !Array.isArray(words) || words.length > 50) throw new Error('公告、慢速秒數或限制詞格式錯誤。');
+        const { announcement, slowSeconds, voiceCooldownSeconds, words } = value;
+        if (typeof announcement !== 'string' || announcement.length > 300 || /[\p{Cc}\p{Cf}]/u.test(announcement) || !Number.isInteger(slowSeconds) || slowSeconds < 5 || slowSeconds > 120 || !Number.isInteger(voiceCooldownSeconds) || voiceCooldownSeconds < 0 || voiceCooldownSeconds > 3600 || !Array.isArray(words) || words.length > 50) throw new Error('公告、聊天室間隔、語音留言間隔或限制詞格式錯誤。');
         const cleanWords = words.map((word) => checkText(word, 40, '限制詞'));
-        run('UPDATE settings SET announcement=?,slow_seconds=?,words=? WHERE id=1', announcement, slowSeconds, JSON.stringify(cleanWords));
+        run('UPDATE settings SET announcement=?,slow_seconds=?,voice_cooldown_seconds=?,words=? WHERE id=1', announcement, slowSeconds, voiceCooldownSeconds, JSON.stringify(cleanWords));
       } else if (action === 'delete') {
         if (typeof value.messageId !== 'string' || !run('UPDATE messages SET deleted=1 WHERE id=? AND deleted=0', value.messageId).changes) throw new Error('找不到訊息。');
       } else if (action === 'mute') {
@@ -162,7 +163,8 @@ export function openStore(path) {
         if (get('SELECT until_ms FROM mutes WHERE user_id=?', sender.id)?.until_ms > Date.now()) throw new Error('禁言期間不能使用語音留言。');
         if (settings().words.some((word) => speech.toLowerCase().includes(word.toLowerCase()))) throw new Error('語音留言含有聊天室限制詞。');
         const previousSpeech = get("SELECT created_at FROM donations WHERE sender_id=? AND message<>'' ORDER BY rowid DESC LIMIT 1", sender.id);
-        if (previousSpeech && Date.now() - Date.parse(previousSpeech.created_at) < 60000) throw new Error('語音留言傳送太快，請稍候 60 秒。');
+        const cooldown = settings().voiceCooldownSeconds;
+        if (previousSpeech && Date.now() - Date.parse(previousSpeech.created_at) < cooldown * 1000) throw new Error(`語音留言傳送太快，請稍候 ${cooldown} 秒。`);
       }
       const room = get('SELECT * FROM broadcasts WHERE id=? AND ended_at IS NULL', broadcastId);
       if (!room || broadcastId !== activeBroadcast) throw new Error('本場直播已結束，請重新確認。');

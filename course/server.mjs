@@ -138,7 +138,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   });
   const room = createOBSRoom(io, store);
   const obsControls = createOBSControls(io, store, secureTransport);
-  function snapshot() { return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(room.state().broadcastId), room: room.state() }; }
+  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), room: currentRoom }; }
   function broadcast() { io.emit('state', snapshot()); }
   function poll() {
     if (polling) return polling;
@@ -206,6 +206,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     });
     handle('donate', (value) => {
       const user = account();
+      if (store.settings().donationsEnabled) store.ensureDonationRoom();
       const active = (status.sources.live.live || status.sources.guest.live) || room.state().donationsEnabled;
       const transaction = store.donate(user, value, active ? room.state().broadcastId : null);
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.id === user.id || peer.data.user?.id === transaction.recipient_id) { peer.emit('account', store.user(peer.data.user.id)); peer.emit('ledger:changed'); }

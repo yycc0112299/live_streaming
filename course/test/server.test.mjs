@@ -227,6 +227,20 @@ test('first host opens a waiting room automatically and any logged-in account ca
   assert.equal(s.app.store.room().host.userId, firstUser.id);
   first.disconnect();
 });
+test('admin can toggle donations before a host joins and a host auto-opens them', async (t) => {
+  const s = await setup(t);
+  const { socket: admin } = await member(t, s, 'ToggleAdmin', 'admin');
+  const { socket: viewer } = await member(t, s, 'ToggleViewer');
+  assert.ok((await emit(viewer, 'room:donations', false)).error);
+  const closed = await emit(admin, 'room:donations', false);
+  assert.equal(closed.donationsEnabled, false);
+  const { socket: host } = await member(t, s, 'ToggleHost', 'host');
+  await emit(host, 'room:start', { audioChecklist: true });
+  assert.equal(s.app.store.room().donationsEnabled, true);
+  const closedAgain = await emit(admin, 'room:donations', false);
+  assert.equal(closedAgain.donationsEnabled, false);
+  assert.equal((await emit(admin, 'room:donations', true)).donationsEnabled, true);
+});
 test('viewer requests the second slot and the current host approves it for this room', async (t) => {
   const s = await setup(t);
   const { socket: host } = await member(t, s, 'RequestHost', 'host');

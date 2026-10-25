@@ -43,6 +43,14 @@ export function createOBSRoom(io, store) {
       try { const account = store.session(socket.data.token); if (!account) throw new Error('請先登入才能加入直播。'); store.join(account.id); notify(); ack({ ok: true, ...state() }); }
       catch (error) { ack({ error: error.message }); }
     });
+    socket.on('room:donations', (enabled, ack) => {
+      if (typeof ack !== 'function') return;
+      try {
+        const account = store.session(socket.data.token);
+        if (!account || account.role !== 'admin') throw new Error('只有管理員可以開關抖內。');
+        store.setDonationsEnabled(enabled === true); notify(); ack({ ok: true, ...state() });
+      } catch (error) { ack({ error: error.message }); }
+    });
     for (const action of ['start', 'end']) socket.on(`room:${action}`, (value, callback) => {
       const ack = typeof value === 'function' ? value : callback;
       if (typeof ack !== 'function') return;

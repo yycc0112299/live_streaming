@@ -96,7 +96,7 @@ function App() {
   const [qrCode, setQrCode] = useState('');
   const chat = useRef(null);
   const management = ['host', 'admin'].includes(user?.role);
-  const liveNow = connected && Boolean(state.sources?.live?.live || state.sources?.guest?.live);
+  const liveNow = connected && Boolean(state.sources?.live?.live || state.sources?.guest?.live) && room.donationsEnabled !== false;
   function command(event, value) {
     return value === undefined ? socket.timeout(10000).emitWithAck(event).then(check) : socket.timeout(10000).emitWithAck(event, value).then(check);
   }
@@ -192,7 +192,7 @@ function App() {
         {room.host?.userId === user?.id && roomRequests.length > 0 && <section className="management" aria-label="第二位主播申請"><h2>第二位主播申請</h2>{roomRequests.map((request) => <div key={request.userId}><span>{request.nickname}</span> <button disabled={roomBusy} onClick={() => roomAction('room:approve', request.userId)}>同意加入</button></div>)}</section>}
         {management && !liveNow && <section className="management" aria-label="直播未開始"><h2>等待直播畫面</h2><p>任一路 OBS 出現直播畫面後，觀眾即可送禮物與點數語音留言。</p></section>}
         {management && room.host && !room.guest && room.host.userId !== user.id && <section className="management" aria-label="第二位主播加入"><h2>第二位主播加入</h2><p>在第二台電腦完成 OBS 與 AEC 設定後，按一下即可占用第二路；第一位主播不用操作。</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>以第二位主播加入</button></section>}
-        {management && room.host && <section className="management" aria-label="OBS 直播間控制"><h2>OBS 直播間控制</h2><p>本場主持人：{room.host.nickname} · 第二位：{room.guest?.nickname || '等待自行加入'}</p><button disabled={roomBusy || (room.host.userId !== user.id && user.role !== 'admin')} onClick={() => roomAction('room:end')}>結束本場應援記帳</button><p className="muted">主持人登入後會自動建立直播間；第二位自行加入。結束記帳不會遙控 OBS。</p></section>}
+        {management && <section className="management" aria-label="抖內控制"><h2>抖內控制</h2><p>{room.host ? `本場主持人：${room.host.nickname} · 第二位：${room.guest?.nickname || '等待自行加入'}` : '目前沒有直播主加入直播間。'}</p><button disabled={roomBusy || user.role !== 'admin'} onClick={() => roomAction('room:donations', !room.donationsEnabled)}>{room.donationsEnabled ? '關閉抖內' : '重新開啟抖內'}</button><p className="muted">管理員可隨時開關；主播建立直播間時會自動開啟。</p></section>}
       </section>
       <aside className="chat-panel" aria-label="即時聊天室"><div className="chat-heading"><h2>即時聊天室 <span>LIVE CHAT</span></h2><span className="chat-dot"/></div>
         {chatSettings.announcement && <div className="announcement" role="status">📌 {chatSettings.announcement}</div>}

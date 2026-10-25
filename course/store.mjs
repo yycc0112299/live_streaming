@@ -24,7 +24,7 @@ export function openStore(path) {
     CREATE TABLE IF NOT EXISTS broadcasts(id TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id), guest_id TEXT REFERENCES users(id), started_at TEXT NOT NULL, ended_at TEXT);
     CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
     CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), nickname TEXT NOT NULL, text TEXT NOT NULL, at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), announcement TEXT NOT NULL DEFAULT '', slow_seconds INTEGER NOT NULL DEFAULT 1, voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60, words TEXT NOT NULL DEFAULT '[]');
+    CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), announcement TEXT NOT NULL DEFAULT '', slow_seconds INTEGER NOT NULL DEFAULT 1, voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60, words TEXT NOT NULL DEFAULT '[]', donations_enabled INTEGER NOT NULL DEFAULT 1);
     INSERT OR IGNORE INTO settings(id) VALUES(1);
     CREATE TABLE IF NOT EXISTS mutes(user_id TEXT PRIMARY KEY REFERENCES users(id), until_ms INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY, message_id TEXT NOT NULL REFERENCES messages(id), reporter_id TEXT NOT NULL REFERENCES users(id), reason TEXT NOT NULL, created_at TEXT NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, UNIQUE(message_id,reporter_id));
@@ -51,6 +51,7 @@ export function openStore(path) {
   if (!db.prepare('PRAGMA table_info(broadcasts)').all().some((column) => column.name === 'guest_id')) db.exec('ALTER TABLE broadcasts ADD COLUMN guest_id TEXT REFERENCES users(id)');
   if (!db.prepare('PRAGMA table_info(users)').all().some((column) => column.name === 'trusted_second')) db.exec('ALTER TABLE users ADD COLUMN trusted_second INTEGER NOT NULL DEFAULT 0');
   if (!db.prepare('PRAGMA table_info(settings)').all().some((column) => column.name === 'voice_cooldown_seconds')) db.exec('ALTER TABLE settings ADD COLUMN voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60');
+  if (!db.prepare('PRAGMA table_info(settings)').all().some((column) => column.name === 'donations_enabled')) db.exec('ALTER TABLE settings ADD COLUMN donations_enabled INTEGER NOT NULL DEFAULT 1');
   const get = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
   const run = (sql, ...args) => db.prepare(sql).run(...args);
@@ -105,7 +106,7 @@ export function openStore(path) {
     const row = get('SELECT user_id FROM obs_devices WHERE token=?', hash(token));
     return row ? user(row.user_id) : null;
   }
-  function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: Math.max(5, row.slow_seconds), voiceCooldownSeconds: Math.max(0, Math.min(3600, row.voice_cooldown_seconds)), words: JSON.parse(row.words) }; }
+  function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: Math.max(5, row.slow_seconds), voiceCooldownSeconds: Math.max(0, Math.min(3600, row.voice_cooldown_seconds)), donationsEnabled: Boolean(row.donations_enabled), words: JSON.parse(row.words) }; }
   function history() { return all('SELECT id,user_id AS userId,nickname,text,at FROM (SELECT rowid AS sequence,* FROM messages WHERE deleted=0 ORDER BY rowid DESC LIMIT 100) ORDER BY sequence'); }
   function audit(actor, action, details) { run('INSERT INTO audit VALUES(?,?,?,?,?)', randomUUID(), actor, action, JSON.stringify(details), new Date().toISOString()); }
   function sendChat(account, text) {
@@ -187,7 +188,7 @@ export function openStore(path) {
   }
   function room() {
     const row = get('SELECT * FROM broadcasts WHERE ended_at IS NULL ORDER BY rowid DESC LIMIT 1');
-    return row ? { broadcastId: row.id, host: { userId: row.host_id, nickname: user(row.host_id).nickname, path: 'live' }, guest: row.guest_id ? { userId: row.guest_id, nickname: user(row.guest_id).nickname, path: 'guest' } : null } : { broadcastId: null, host: null, guest: null };
+    return { donationsEnabled: Boolean(settings().donationsEnabled), ...(row ? { broadcastId: row.id, host: { userId: row.host_id, nickname: user(row.host_id).nickname, path: 'live' }, guest: row.guest_id ? { userId: row.guest_id, nickname: user(row.guest_id).nickname, path: 'guest' } : null } : { broadcastId: null, host: null, guest: null }) };
   }
   return { db, user, guest, register, login, session, newSession, newOBSDevice, obsDevice, settings, history, sendChat, moderate, report, donate, ledger, room,
     authorizeHost: (id) => { if (!run("UPDATE users SET role='host',trusted_second=1 WHERE id=? AND role IN ('viewer','host')", id).changes) throw new Error('找不到可授權的第二位主播。'); return user(id); },
@@ -201,7 +202,7 @@ export function openStore(path) {
         if (active.host.userId !== id || active.guest || !guest) throw new Error('直播間已開啟，請先結束上一場。');
         run('UPDATE broadcasts SET guest_id=? WHERE id=?', guest.id, active.broadcastId); return active.broadcastId;
       }
-      const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,guest_id,started_at) VALUES(?,?,?,?)', bid, id, guest?.id || null, new Date().toISOString()); return bid;
+      const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,guest_id,started_at) VALUES(?,?,?,?)', bid, id, guest?.id || null, new Date().toISOString()); run('UPDATE settings SET donations_enabled=1 WHERE id=1'); return bid;
     }),
     join: (id) => transaction(() => {
       const active = room();
@@ -212,6 +213,7 @@ export function openStore(path) {
       return active.broadcastId;
     }),
     end: (id) => run('UPDATE broadcasts SET ended_at=? WHERE id=? AND ended_at IS NULL', new Date().toISOString(), id),
+    setDonationsEnabled: (enabled) => { run('UPDATE settings SET donations_enabled=? WHERE id=1', enabled ? 1 : 0); return Boolean(enabled); },
     supportTotal: (id) => id ? get('SELECT COALESCE(SUM(amount),0) AS n FROM donations WHERE broadcast_id=?', id).n : 0,
     reports: () => all('SELECT r.id,r.reason,r.created_at AS at,m.id AS messageId,m.text,m.nickname,m.user_id AS userId FROM reports r JOIN messages m ON m.id=r.message_id WHERE r.resolved=0 ORDER BY r.rowid DESC LIMIT 100'),
     mutes: () => all('SELECT m.user_id AS userId,u.nickname,m.until_ms AS untilMs FROM mutes m JOIN users u ON u.id=m.user_id WHERE m.until_ms>? ORDER BY m.until_ms DESC', Date.now()),

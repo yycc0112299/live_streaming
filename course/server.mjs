@@ -215,6 +215,12 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       return { ok: true, id: transaction.id, duplicate: Boolean(transaction.duplicate), points: store.user(user.id).points, supportTotal: store.supportTotal(room.state().broadcastId) };
     });
     handle('ledger', (before = null) => store.ledger(account(), before));
+    handle('ledger:delete', (id) => {
+      const donation = store.deleteDonation(account(), id);
+      for (const peer of io.sockets.sockets.values()) if (peer.data.user?.role === 'admin' || peer.data.user?.id === donation.sender_id) peer.emit('account', store.user(peer.data.user.id));
+      io.emit('ledger:changed');
+      return { ok: true };
+    });
     handle('chat:report', (value) => { store.report(account(), value); });
     handle('chat:manage', (value) => {
       store.moderate(account(), value);

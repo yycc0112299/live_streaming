@@ -186,11 +186,21 @@ export function openStore(path) {
     const reconciliation = actor.role === 'admin' ? get(`SELECT (SELECT COUNT(*)*${INITIAL_POINTS} FROM users) AS granted,(SELECT COALESCE(SUM(points),0) FROM users) AS wallets,(SELECT COALESCE(SUM(amount),0) FROM donations) AS income`) : undefined;
     return { transactions: rows, nextCursor, scope: actor.role === 'admin' ? 'all' : 'own', ...totals, points: user(actor.id).points, ...(reconciliation ? { reconciliation: { ...reconciliation, balanced: reconciliation.granted === reconciliation.wallets + reconciliation.income } } : {}) };
   }
+  function deleteDonation(actor, id) {
+    if (actor.role !== 'admin' || typeof id !== 'string') throw new Error('只有管理員可以刪除應援紀錄。');
+    return transaction(() => {
+      const donation = get('SELECT * FROM donations WHERE id=?', id);
+      if (!donation) throw new Error('找不到應援紀錄。');
+      run('UPDATE users SET points=points+? WHERE id=?', donation.amount, donation.sender_id);
+      run('DELETE FROM donations WHERE id=?', id);
+      return donation;
+    });
+  }
   function room() {
     const row = get('SELECT * FROM broadcasts WHERE ended_at IS NULL ORDER BY rowid DESC LIMIT 1');
     return { donationsEnabled: Boolean(settings().donationsEnabled), ...(row ? { broadcastId: row.id, host: { userId: row.host_id, nickname: user(row.host_id).nickname, path: 'live' }, guest: row.guest_id ? { userId: row.guest_id, nickname: user(row.guest_id).nickname, path: 'guest' } : null } : { broadcastId: null, host: null, guest: null }) };
   }
-  return { db, user, guest, register, login, session, newSession, newOBSDevice, obsDevice, settings, history, sendChat, moderate, report, donate, ledger, room,
+  return { db, user, guest, register, login, session, newSession, newOBSDevice, obsDevice, settings, history, sendChat, moderate, report, donate, ledger, deleteDonation, room,
     authorizeHost: (id) => { if (!run("UPDATE users SET role='host',trusted_second=1 WHERE id=? AND role IN ('viewer','host')", id).changes) throw new Error('找不到可授權的第二位主播。'); return user(id); },
     logout: (token) => run('DELETE FROM sessions WHERE token=?', hash(token || '')),
     rename: (id, name) => { const nickname = checkText(name, 24, '暱稱'); run('UPDATE users SET nickname=? WHERE id=?', nickname, id); return nickname; },

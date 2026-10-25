@@ -48,6 +48,7 @@ export function createOBSRoom(io, store) {
       try {
         const account = store.session(socket.data.token);
         if (!account || account.role !== 'admin') throw new Error('只有管理員可以開關抖內。');
+        if (enabled === true && !state().host) store.start(account.id);
         store.setDonationsEnabled(enabled === true); notify(); ack({ ok: true, ...state() });
       } catch (error) { ack({ error: error.message }); }
     });

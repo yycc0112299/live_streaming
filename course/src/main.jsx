@@ -96,7 +96,7 @@ function App() {
   const [qrCode, setQrCode] = useState('');
   const chat = useRef(null);
   const management = ['host', 'admin'].includes(user?.role);
-  const liveNow = connected && Boolean(state.sources?.live?.live || state.sources?.guest?.live) && room.donationsEnabled !== false;
+  const liveNow = connected && Boolean(state.sources?.live?.live || state.sources?.guest?.live || room.donationsEnabled);
   function command(event, value) {
     return value === undefined ? socket.timeout(10000).emitWithAck(event).then(check) : socket.timeout(10000).emitWithAck(event, value).then(check);
   }

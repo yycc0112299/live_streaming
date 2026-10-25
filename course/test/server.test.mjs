@@ -141,7 +141,7 @@ test('points are account scoped, atomic, idempotent and cannot be self-donated',
   const { socket: host } = await member(t, s, 'Host', 'host');
   const { socket: a, user, token } = await member(t, s, 'Alice');
   const { broadcastId } = await emit(host, 'room:start', { guestUsername: 'Alice', audioChecklist: true });
-  s.live(true); await s.app.poll();
+  await emit(host, 'room:donations', true);
   const value = { amount: 10, requestId: crypto.randomUUID(), broadcastId };
   const first = await emit(a, 'donate', value);
   assert.equal(first.points, 990); assert.equal(first.supportTotal, 10);

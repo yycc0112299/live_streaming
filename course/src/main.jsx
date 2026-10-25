@@ -81,6 +81,8 @@ function App() {
   const [chatSettings, setChatSettings] = useState({ announcement: '', slowSeconds: 5, voiceCooldownSeconds: 60 });
   const [pendingDonation, setPendingDonation] = useState(null);
   const [speechText, setSpeechText] = useState('');
+  const [voiceCooldownUntil, setVoiceCooldownUntil] = useState(0);
+  const [voiceCooldownRemaining, setVoiceCooldownRemaining] = useState(0);
   const [donating, setDonating] = useState(false);
   const [roomBusy, setRoomBusy] = useState(false);
   const [gifts, setGifts] = useState([]);
@@ -140,6 +142,13 @@ function App() {
     return () => { socket.removeAllListeners(); socket.disconnect(); window.speechSynthesis?.cancel(); window.clearTimeout(window.__group9OverlayTimer); };
   }, []);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 3000); return () => clearTimeout(timer); }, [notice]);
+  useEffect(() => {
+    const update = () => setVoiceCooldownRemaining(Math.max(0, Math.ceil((voiceCooldownUntil - Date.now()) / 1000)));
+    update();
+    if (!voiceCooldownUntil) return undefined;
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [voiceCooldownUntil]);
   useEffect(() => { if (chat.current) chat.current.scrollTop = chat.current.scrollHeight; }, [messages]);
   useEffect(() => { if (user && pendingDonation && pendingDonation.senderId !== user.id) setPendingDonation(null); }, [user?.id, pendingDonation]);
   function send(event) {
@@ -155,7 +164,7 @@ function App() {
   async function donate(amount, message = '') {
     const request = pendingDonation || { amount, requestId: crypto.randomUUID(), broadcastId: room.broadcastId, senderId: user?.id, message };
     setPendingDonation(request); setDonating(true); setError('');
-    try { await command('donate', request); setPendingDonation(null); if (request.message) setSpeechText(''); }
+    try { await command('donate', request); setPendingDonation(null); if (request.message) { setSpeechText(''); setVoiceCooldownUntil(Date.now() + chatSettings.voiceCooldownSeconds * 1000); } }
     catch (error) { onError(error); }
     finally { setDonating(false); }
   }
@@ -185,7 +194,7 @@ function App() {
         <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
         <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 雙 OBS</span></div>
         <section className="gift-shop" aria-label="直播禮物"><div className="gift-shop-heading"><strong>送禮物</strong><span>我的點數 <b>{user?.points || 0}</b> · 本場應援 <b>{state.supportTotal || 0}</b></span></div><div className="gift-options">{GIFTS.map(({ amount, name, icon, kind }) => <button className={`gift-option gift-option-${kind}`} title={`${name} ${amount} 點`} key={amount} disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}><span className="gift-option-icon" aria-hidden="true">{icon}</span><span>{name}</span><b>{amount} 點</b></button>)}</div>{pendingDonation && <div className="pending-donation"><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>重試同一筆禮物</button><button disabled={donating} onClick={() => setPendingDonation(null)}>關閉待確認</button></div>}</section>
-        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim()) donate(VOICE_MESSAGE_POINTS, speechText.trim()); }}><label>點數語音留言（{VOICE_MESSAGE_POINTS} 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < VOICE_MESSAGE_POINTS || donating || Boolean(pendingDonation) || !speechText.trim()}>花 {VOICE_MESSAGE_POINTS} 點送出語音留言</button><p className="muted">任一路直播畫面正在播放時即可送出；語音留言每次 25 點{chatSettings.voiceCooldownSeconds ? `，送出後需等待 ${chatSettings.voiceCooldownSeconds} 秒。` : '，目前不設間隔。'}</p></form>
+        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim() && !voiceCooldownRemaining) donate(VOICE_MESSAGE_POINTS, speechText.trim()); }}><label>點數語音留言（{VOICE_MESSAGE_POINTS} 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < VOICE_MESSAGE_POINTS || donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining) || !speechText.trim()}>花 {VOICE_MESSAGE_POINTS} 點送出語音留言</button><p className="muted">任一路直播畫面正在播放時即可送出；語音留言每次 25 點{voiceCooldownRemaining ? `，目前還剩 ${voiceCooldownRemaining} 秒。` : chatSettings.voiceCooldownSeconds ? `，送出後等待 ${chatSettings.voiceCooldownSeconds} 秒。` : '，目前不設間隔。'}</p></form>
         <div className="play-hint">觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。{!useWebRTC && 'HLS 影音會比聊天稍晚。'}</div>
         {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError}/>}
         {user && room.host && !room.guest && room.host.userId !== user.id && !management && <section className="management" aria-label="加入第二路直播"><h2>加入直播</h2><p>任何已登入的主播都可以直接占用第二路，不需要第一位主播同意。</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>{roomBusy ? '加入中…' : '直接加入第二路'}</button></section>}

@@ -2,5 +2,7 @@ node_modules/
 .env
 coverage/
 *.log
+/course/.runtime/*PRIVATE*
+/course/.runtime/obs-aec-backup.json
 /site/.sites-checkout/
 /.env.livekit.local

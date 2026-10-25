@@ -215,14 +215,16 @@ test('fixed OBS room binds two accounts, rejects unauthorized control, and survi
   await new Promise((resolve) => setTimeout(resolve, 30));
   assert.equal((await (await fetch(s.url + '/api/status')).json()).room.broadcastId, result.broadcastId);
 });
-test('first host opens a waiting room automatically and an authorized second host joins without first-host action', async (t) => {
+test('first host opens a waiting room automatically and any logged-in account can join the second slot', async (t) => {
   const s = await setup(t);
   const { socket: first, user: firstUser } = await member(t, s, 'FirstHost', 'host');
   const { socket: second, user: secondUser } = await member(t, s, 'SecondHost', 'host');
-  const { socket: viewer } = await member(t, s, 'Viewer');
-  assert.ok((await emit(viewer, 'room:join')).error);
+  const { socket: viewer, user: viewerUser } = await member(t, s, 'Viewer');
+  const viewerJoined = await emit(viewer, 'room:join');
+  assert.equal(viewerJoined.guest.userId, viewerUser.id);
   const joined = await emit(second, 'room:join');
-  assert.equal(joined.host.userId, firstUser.id); assert.equal(joined.guest.userId, secondUser.id);
+  assert.ok(joined.error);
+  assert.equal(s.app.store.room().host.userId, firstUser.id);
   first.disconnect();
 });
 test('viewer requests the second slot and the current host approves it for this room', async (t) => {

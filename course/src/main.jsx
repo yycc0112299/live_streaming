@@ -17,13 +17,18 @@ const socket = io({ autoConnect: false, path: `${base}socket.io` });
 
 function Player({ live, path = 'live', name = '主播', silent = false }) {
   const video = useRef(null);
+  const [muted, setMuted] = useState(true);
   const [error, setError] = useState('');
   const [attempt, retry] = useState(0);
   useEffect(() => {
     setError('');
     if (!live) return;
     const element = video.current;
-    const preventSelfMonitor = () => { if (silent && !element.muted) element.muted = true; };
+    const preventSelfMonitor = () => {
+      element.muted = silent || muted;
+      element.volume = element.muted ? 0 : 1;
+    };
+    preventSelfMonitor();
     element.addEventListener('volumechange', preventSelfMonitor);
     const source = `${base}hls/${path}/index.m3u8`;
     let hls;
@@ -62,10 +67,11 @@ function Player({ live, path = 'live', name = '主播', silent = false }) {
       element.removeAttribute('src');
       element.load();
     };
-  }, [live, attempt, path, silent]);
+  }, [live, attempt, path, silent, muted]);
   return <div className="player">
-    <video ref={video} controls autoPlay muted playsInline aria-label={`${name} 的 OBS 直播`} hidden={!live}/>
+    <video ref={video} controls={false} autoPlay muted={silent || muted} playsInline aria-label={`${name} 的 OBS 直播`} hidden={!live}/>
     <span className="source-name">{name} · {live ? 'LIVE' : 'OFFLINE'}{silent && ' · 自己返聽已關閉'}</span>
+    {live && !silent && <button type="button" onClick={() => setMuted((value) => !value)}>{muted ? `播放${name}聲音` : `關閉${name}聲音`}</button>}
     {!live && <div className="offline"><span className="signal">◉</span><h2>{name} 尚未推流</h2><p>連線恢復後會自動播放。</p></div>}
     {error && <div role="status" className="video-error">{error}<button onClick={() => retry((n) => n + 1)}>重試播放</button></div>}
   </div>;

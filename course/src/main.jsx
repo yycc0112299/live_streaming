@@ -10,12 +10,13 @@ import QRCode from 'qrcode';
 import './style.css';
 import Account from './Account.jsx';
 import Moderation from './Moderation.jsx';
+import { preferredLanguage, translate } from './i18n.mjs';
 
 const base = import.meta.env.BASE_URL;
 const useWebRTC = import.meta.env.VITE_WEBRTC === 'true';
 const socket = io({ autoConnect: false, path: `${base}socket.io` });
 
-function Player({ live, path = 'live', name = '主播', silent = false }) {
+function Player({ live, path = 'live', name, silent = false, t }) {
   const video = useRef(null);
   const [muted, setMuted] = useState(true);
   const [error, setError] = useState('');
@@ -69,15 +70,18 @@ function Player({ live, path = 'live', name = '主播', silent = false }) {
     };
   }, [live, attempt, path, silent, muted]);
   return <div className="player">
-    <video ref={video} controls={false} autoPlay muted={silent || muted} playsInline aria-label={`${name} 的 OBS 直播`} hidden={!live}/>
-    <span className="source-name">{name} · {live ? 'LIVE' : 'OFFLINE'}{silent && ' · 自己返聽已關閉'}</span>
-    {live && !silent && <button type="button" onClick={() => setMuted((value) => !value)}>{muted ? `播放${name}聲音` : `關閉${name}聲音`}</button>}
-    {!live && <div className="offline"><span className="signal">◉</span><h2>{name} 尚未推流</h2><p>連線恢復後會自動播放。</p></div>}
-    {error && <div role="status" className="video-error">{error}<button onClick={() => retry((n) => n + 1)}>重試播放</button></div>}
+    <video ref={video} controls={false} autoPlay muted={silent || muted} playsInline aria-label={`${name}${t('的 OBS 直播')}`} hidden={!live}/>
+    <span className="source-name">{name} · {live ? 'LIVE' : 'OFFLINE'}{silent && ` · ${t('自己返聽已關閉')}`}</span>
+    {live && !silent && <button type="button" onClick={() => setMuted((value) => !value)}>{muted ? `${t('播放聲音')} · ${name}` : `${t('關閉聲音')} · ${name}`}</button>}
+    {!live && <div className="offline"><span className="signal">◉</span><h2>{name}{t('尚未推流')}</h2><p>{t('連線恢復後會自動播放。')}</p></div>}
+    {error && <div role="status" className="video-error">{t(error)}<button onClick={() => retry((n) => n + 1)}>{t('重試播放')}</button></div>}
   </div>;
 }
 
 function App() {
+  const [language, setLanguage] = useState(() => preferredLanguage(window.localStorage));
+  const t = React.useCallback((key) => translate(language, key), [language]);
+  useEffect(() => { document.documentElement.lang = language === 'en' ? 'en' : 'zh-Hant'; try { window.localStorage.setItem('group9-language', language); } catch {} }, [language]);
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState({ live: false, available: false, viewers: 0, likes: 0 });
   const [user, setUser] = useState(null);
@@ -98,6 +102,7 @@ function App() {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const gifInput = useRef(null);
   const [heart, setHeart] = useState(0);
   const [notice, setNotice] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -167,6 +172,20 @@ function App() {
       setText('');
     });
   }
+  async function sendGif(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !connected || !user || sending) return;
+    if (file.type !== 'image/gif') return setError('僅支援 GIF 圖片。');
+    if (file.size > 512 * 1024) return setError('GIF 不得超過 512 KB。');
+    setSending(true); setError('');
+    try {
+      const response = await fetch(`${base}api/chat/gif`, { method: 'POST', headers: { 'Content-Type': 'image/gif' }, body: file });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'GIF 上傳失敗。');
+    } catch (error) { onError(error); }
+    finally { setSending(false); }
+  }
   async function donate(amount, message = '') {
     const request = pendingDonation || { amount, requestId: crypto.randomUUID(), broadcastId: room.broadcastId, senderId: user?.id, message };
     setPendingDonation(request); setDonating(true); setError('');
@@ -176,8 +195,8 @@ function App() {
   }
   const shareUrl = new URL(base, location.origin).href;
   async function copyShareUrl() {
-    try { await navigator.clipboard.writeText(shareUrl); setNotice('觀看連結已複製'); }
-    catch { setNotice(`無法自動複製，請手動複製：${shareUrl}`); }
+    try { await navigator.clipboard.writeText(shareUrl); setNotice(t('觀看連結已複製')); }
+    catch { setNotice(`${t('無法自動複製，請手動複製：')}${shareUrl}`); }
   }
   async function showQrCode() {
     try { setQrCode(await QRCode.toDataURL(shareUrl, { width: 280, margin: 2, errorCorrectionLevel: 'M' })); }
@@ -190,41 +209,41 @@ function App() {
     finally { setRoomBusy(false); }
   }
   return <>
-    <header className="topbar"><a href={base} className="brand"><span className="brand-icon">◉</span> CLOUD<span>LIVE</span><small>GROUP 09</small></a><span className="course-tag">電子工程總整課程 · NTUST</span><span className={`connection ${connected ? 'online' : ''}`}>{connected ? '已連線' : '重新連線中…'}</span></header>
+    <header className="topbar"><a href={base} className="brand"><span className="brand-icon">◉</span> CLOUD<span>LIVE</span><small>GROUP 09</small></a><span className="course-tag">{t('電子工程總整課程 · NTUST')}</span><div className="topbar-tools"><button type="button" className="language-toggle" onClick={() => setLanguage((value) => value === 'zh' ? 'en' : 'zh')} aria-label={language === 'zh' ? 'Switch to English' : '切換成中文'}>{language === 'zh' ? 'English' : '中文'}</button><span className={`connection ${connected ? 'online' : ''}`}>{t(connected ? '已連線' : '重新連線中…')}</span></div></header>
     <main>
       <div className="eyebrow">ONE ROOM. SHARED MOMENTS.</div>
-      <div className="heading"><div><h1>讓每個瞬間，<em>即時相聚。</em></h1><p>一場直播，一個聊天室。打開瀏覽器，就在現場。</p></div><button className="share" onClick={() => setShareOpen(true)}>↗ 分享直播間</button></div>
-      {shareOpen && <dialog className="share-dialog" open aria-labelledby="share-title"><div className="share-dialog-heading"><h2 id="share-title">分享直播間</h2><button aria-label="關閉分享視窗" onClick={() => { setShareOpen(false); setQrCode(''); }}>×</button></div><p>分享這個固定網址，朋友打開連結或掃描 QR Code 就能進入直播間。</p><div className="share-options"><button onClick={copyShareUrl}>複製網址</button><button onClick={showQrCode}>顯示 QR Code</button></div><label>直播網址<input readOnly value={shareUrl} onFocus={(event) => event.target.select()}/></label>{qrCode && <div className="qr-code" role="status"><img src={qrCode} alt="直播網站 QR Code"/><span>使用手機相機掃描即可進入</span></div>}</dialog>}
-      <div className="room-grid"><section className="broadcast" aria-label="直播間">
-        <div className="video-wrap"><div className="duo-section"><h2>雙 OBS 同台直播</h2><div className="duo-grid">{[{ path: 'live', name: room.host?.nickname || '第一台 OBS', userId: room.host?.userId }, { path: 'guest', name: room.guest?.nickname || '第二台 OBS', userId: room.guest?.userId }].map((source) => <Player key={source.path} path={source.path} name={source.name} silent={Boolean(user && source.userId === user.id)} live={connected && Boolean(state.sources?.[source.path]?.live)}/>)}</div></div><GiftOverlay gifts={gifts} onDone={() => setGifts((items) => items.slice(1))}/>{overlay && <div className={`stream-overlay ${overlay.type}`} role="status">{overlay.type === 'donation' ? <><strong>🎁 {overlay.nickname} 應援 {overlay.amount} 點</strong><span>謝謝支持！</span></> : <><strong>{overlay.nickname}</strong><span>{overlay.text}</span></>}</div>}<span className={`live-badge ${(state.live || state.sources?.guest?.live) && connected ? 'is-live' : ''}`}>{!connected ? '連線中' : state.live || state.sources?.guest?.live ? '● LIVE' : state.available ? '● OFFLINE' : '服務連線中'}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
-        <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> 直播 / 交流 / 一起探索</p></div></div>
-        <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> 個連線分頁</span><button disabled={!connected} aria-label="為直播按讚" onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> 喜歡</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · 雙 OBS</span></div>
-        <section className="gift-shop" aria-label="直播禮物"><div className="gift-shop-heading"><strong>送禮物</strong><span>我的點數 <b>{user?.points || 0}</b> · 本場應援 <b>{state.supportTotal || 0}</b></span></div><div className="gift-options">{GIFTS.map(({ amount, name, icon, kind }) => <button className={`gift-option gift-option-${kind}`} title={`${name} ${amount} 點`} key={amount} disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}><span className="gift-option-icon" aria-hidden="true">{icon}</span><span>{name}</span><b>{amount} 點</b></button>)}</div>{pendingDonation && <div className="pending-donation"><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>重試同一筆禮物</button><button disabled={donating} onClick={() => setPendingDonation(null)}>關閉待確認</button></div>}</section>
-        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim() && !voiceCooldownRemaining) donate(VOICE_MESSAGE_POINTS, speechText.trim()); }}><label>點數語音留言（{VOICE_MESSAGE_POINTS} 點，最多 120 字）<input maxLength="120" disabled={donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder="想讓直播唸出的內容" required/></label><button disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < VOICE_MESSAGE_POINTS || donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining) || !speechText.trim()}>花 {VOICE_MESSAGE_POINTS} 點送出語音留言</button><p className="muted">任一路直播畫面正在播放時即可送出；語音留言每次 25 點{voiceCooldownRemaining ? `，目前還剩 ${voiceCooldownRemaining} 秒。` : chatSettings.voiceCooldownSeconds ? `，送出後等待 ${chatSettings.voiceCooldownSeconds} 秒。` : '，目前不設間隔。'}</p></form>
-        <div className="play-hint">觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。{!useWebRTC && 'HLS 影音會比聊天稍晚。'}</div>
-        {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError}/>}
-        {user && room.host && !room.guest && room.host.userId !== user.id && !management && <section className="management" aria-label="加入第二路直播"><h2>加入直播</h2><p>任何已登入的主播都可以直接占用第二路，不需要第一位主播同意。</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>{roomBusy ? '加入中…' : '直接加入第二路'}</button></section>}
-        {room.host?.userId === user?.id && roomRequests.length > 0 && <section className="management" aria-label="第二位主播申請"><h2>第二位主播申請</h2>{roomRequests.map((request) => <div key={request.userId}><span>{request.nickname}</span> <button disabled={roomBusy} onClick={() => roomAction('room:approve', request.userId)}>同意加入</button></div>)}</section>}
-        {management && !liveNow && <section className="management" aria-label="直播未開始"><h2>等待直播畫面</h2><p>任一路 OBS 出現直播畫面後，觀眾即可送禮物與點數語音留言。</p></section>}
-        {management && room.host && !room.guest && room.host.userId !== user.id && <section className="management" aria-label="第二位主播加入"><h2>第二位主播加入</h2><p>在第二台電腦完成 OBS 與 AEC 設定後，按一下即可占用第二路；第一位主播不用操作。</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>以第二位主播加入</button></section>}
-        {management && <section className="management" aria-label="抖內控制"><h2>抖內控制</h2><p>{room.host ? `本場主持人：${room.host.nickname} · 第二位：${room.guest?.nickname || '等待自行加入'}` : '目前沒有直播主加入直播間。'}</p><button disabled={roomBusy || user.role !== 'admin'} onClick={() => roomAction('room:donations', !room.donationsEnabled)}>{room.donationsEnabled ? '關閉抖內' : '重新開啟抖內'}</button><p className="muted">管理員可隨時開關；主播建立直播間時會自動開啟。</p></section>}
+      <div className="heading"><div><h1>{t('讓每個瞬間，')}<em>{t('即時相聚。')}</em></h1><p>{t('一場直播，一個聊天室。打開瀏覽器，就在現場。')}</p></div><button className="share" onClick={() => setShareOpen(true)}>↗ {t('分享直播間')}</button></div>
+      {shareOpen && <dialog className="share-dialog" open aria-labelledby="share-title"><div className="share-dialog-heading"><h2 id="share-title">{t('分享直播間')}</h2><button aria-label={t('關閉分享視窗')} onClick={() => { setShareOpen(false); setQrCode(''); }}>×</button></div><p>{t('分享這個固定網址，朋友打開連結或掃描 QR Code 就能進入直播間。')}</p><div className="share-options"><button onClick={copyShareUrl}>{t('複製網址')}</button><button onClick={showQrCode}>{t('顯示 QR Code')}</button></div><label>{t('直播網址')}<input readOnly value={shareUrl} onFocus={(event) => event.target.select()}/></label>{qrCode && <div className="qr-code" role="status"><img src={qrCode} alt={t('直播網站 QR Code')}/><span>{t('使用手機相機掃描即可進入')}</span></div>}</dialog>}
+      <div className="room-grid"><section className="broadcast" aria-label={t('直播間')}>
+        <div className="video-wrap"><div className="duo-section"><h2>{t('雙 OBS 同台直播')}</h2><div className="duo-grid">{[{ path: 'live', name: room.host?.nickname || t('第一台 OBS'), userId: room.host?.userId }, { path: 'guest', name: room.guest?.nickname || t('第二台 OBS'), userId: room.guest?.userId }].map((source) => <Player key={source.path} path={source.path} name={source.name} silent={Boolean(user && source.userId === user.id)} live={connected && Boolean(state.sources?.[source.path]?.live)} t={t}/>)}</div></div><GiftOverlay gifts={gifts} onDone={() => setGifts((items) => items.slice(1))} t={t}/>{overlay && <div className={`stream-overlay ${overlay.type}`} role="status">{overlay.type === 'donation' ? <><strong>🎁 {overlay.nickname} {t('應援')} {overlay.amount} {t('點')}</strong><span>{t('謝謝支持！')}</span></> : <><strong>{overlay.nickname}</strong><span>{overlay.text}</span></>}</div>}<span className={`live-badge ${(state.live || state.sources?.guest?.live) && connected ? 'is-live' : ''}`}>{!connected ? t('連線中') : state.live || state.sources?.guest?.live ? '● LIVE' : state.available ? '● OFFLINE' : t('服務連線中')}</span>{heart > 0 && <span key={heart} className="floating-heart" aria-hidden="true">♥</span>}</div>
+        <div className="stream-info"><div className="avatar">09</div><div><h2>Group 9 · Cloud-Based Live Streaming</h2><p>王昱程 × 曹少懷 <span>·</span> {t('直播 / 交流 / 一起探索')}</p></div></div>
+        <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> {t('個連線分頁')}</span><button disabled={!connected} aria-label={t('為直播按讚')} onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> {t('喜歡')}</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · {t('雙 OBS 同台直播')}</span></div>
+        <section className="gift-shop" aria-label={t('直播禮物')}><div className="gift-shop-heading"><strong>{t('送禮物')}</strong><span>{t('我的點數')} <b>{user?.points || 0}</b> · {t('本場應援')} <b>{state.supportTotal || 0}</b></span></div><div className="gift-options">{GIFTS.map(({ amount, name, icon, kind }) => <button className={`gift-option gift-option-${kind}`} title={`${t(name)} ${amount} ${t('點')}`} key={amount} disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}><span className="gift-option-icon" aria-hidden="true">{icon}</span><span>{t(name)}</span><b>{amount} {t('點')}</b></button>)}</div>{pendingDonation && <div className="pending-donation"><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>{t('重試同一筆禮物')}</button><button disabled={donating} onClick={() => setPendingDonation(null)}>{t('關閉待確認')}</button></div>}</section>
+        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim() && !voiceCooldownRemaining) donate(VOICE_MESSAGE_POINTS, speechText.trim()); }}><label>{t('點數語音留言')}（{VOICE_MESSAGE_POINTS} {t('點')}，{t('最多 120 字')}）<input maxLength="120" disabled={donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder={t('想讓直播唸出的內容')} required/></label><button disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < VOICE_MESSAGE_POINTS || donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining) || !speechText.trim()}>{t('花')} {VOICE_MESSAGE_POINTS} {t('點')} {t('送出語音留言')}</button><p className="muted">{t('任一路直播畫面正在播放時即可送出；語音留言每次 25 點')}{voiceCooldownRemaining ? `，${t('目前還剩')} ${voiceCooldownRemaining} ${t('秒。')}` : chatSettings.voiceCooldownSeconds ? `，${t('送出後等待')} ${chatSettings.voiceCooldownSeconds} ${t('秒。')}` : `，${t('目前不設間隔。')}`}</p></form>
+        <div className="play-hint">{t('觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。')}{!useWebRTC && t('HLS 影音會比聊天稍晚。')}</div>
+        {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <OBSControls command={command} onError={onError} t={t}/>}
+        {user && room.host && !room.guest && room.host.userId !== user.id && !management && <section className="management" aria-label={t('加入第二路直播')}><h2>{t('加入直播')}</h2><p>{t('任何已登入的主播都可以直接占用第二路，不需要第一位主播同意。')}</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>{t(roomBusy ? '加入中…' : '直接加入第二路')}</button></section>}
+        {room.host?.userId === user?.id && roomRequests.length > 0 && <section className="management" aria-label={t('第二位主播申請')}><h2>{t('第二位主播申請')}</h2>{roomRequests.map((request) => <div key={request.userId}><span>{request.nickname}</span> <button disabled={roomBusy} onClick={() => roomAction('room:approve', request.userId)}>{t('同意加入')}</button></div>)}</section>}
+        {management && !liveNow && <section className="management" aria-label={t('直播未開始')}><h2>{t('等待直播畫面')}</h2><p>{t('任一路 OBS 出現直播畫面後，觀眾即可送禮物與點數語音留言。')}</p></section>}
+        {management && room.host && !room.guest && room.host.userId !== user.id && <section className="management" aria-label={t('第二位主播加入')}><h2>{t('第二位主播加入')}</h2><p>{t('在第二台電腦完成 OBS 與 AEC 設定後，按一下即可占用第二路；第一位主播不用操作。')}</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>{t('以第二位主播加入')}</button></section>}
+        {management && <section className="management" aria-label={t('抖內控制')}><h2>{t('抖內控制')}</h2><p>{room.host ? `${t('本場主持人：')}${room.host.nickname} · ${t('第二位：')}${room.guest?.nickname || t('等待自行加入')}` : t('目前沒有直播主加入直播間。')}</p><button disabled={roomBusy || user.role !== 'admin'} onClick={() => roomAction('room:donations', !room.donationsEnabled)}>{t(room.donationsEnabled ? '關閉抖內' : '重新開啟抖內')}</button><p className="muted">{t('管理員可隨時開關；主播建立直播間時會自動開啟。')}</p></section>}
       </section>
-      <aside className="chat-panel" aria-label="即時聊天室"><div className="chat-heading"><h2>即時聊天室 <span>LIVE CHAT</span></h2><span className="chat-dot"/></div>
+      <aside className="chat-panel" aria-label={t('即時聊天室')}><div className="chat-heading"><h2>{t('即時聊天室')} <span>LIVE CHAT</span></h2><span className="chat-dot"/></div>
         {chatSettings.announcement && <div className="announcement" role="status">📌 {chatSettings.announcement}</div>}
-        <div className="chat-welcome"><strong>歡迎來到 Group 9 👋</strong><p>選個暱稱，和正在觀看的朋友聊聊。請友善交流，勿分享私人資訊。</p></div>
-        <div className="messages" ref={chat} role="log" aria-live="polite" aria-relevant="additions" aria-label="聊天訊息">
-          {messages.length === 0 && <div className="empty-chat">美好的對話，從一句哈囉開始。</div>}
-          {messages.map((message) => <div className="message" key={message.id}><div className="message-line"><strong>{message.nickname}</strong><p>{message.text}</p><time dateTime={message.at}>{new Date(message.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</time></div>{user && <div className="message-tools">{!management && <button onClick={() => { const reason = window.prompt('檢舉原因（最多 200 字）'); if (reason) command('chat:report', { messageId: message.id, reason }).then(() => setNotice('檢舉已送出')).catch(onError); }}>{'檢舉'}</button>}{management && <><button onClick={() => command('chat:manage', { action: 'delete', messageId: message.id }).catch(onError)}>刪除</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 10 }).catch(onError)}>禁言</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 0 }).catch(onError)}>解除禁言</button></>}</div>}</div>)}
+        <div className="chat-welcome"><strong>{t('歡迎來到 Group 9 👋')}</strong><p>{t('選個暱稱，和正在觀看的朋友聊聊。請友善交流，勿分享私人資訊。')}</p></div>
+        <div className="messages" ref={chat} role="log" aria-live="polite" aria-relevant="additions" aria-label={t('聊天訊息')}>
+          {messages.length === 0 && <div className="empty-chat">{t('美好的對話，從一句哈囉開始。')}</div>}
+          {messages.map((message) => <div className="message" key={message.id}><div className="message-line"><strong>{message.nickname}</strong>{message.gifId ? <img className="chat-gif" src={`${base}api/chat/gif/${message.gifId}`} alt={t('GIF 貼圖')} loading="lazy"/> : <p>{message.text}</p>}<time dateTime={message.at}>{new Date(message.at).toLocaleTimeString(language === 'en' ? 'en-US' : 'zh-TW', { hour: '2-digit', minute: '2-digit' })}</time></div>{user && <div className="message-tools">{!management && <button onClick={() => { const reason = window.prompt(t('檢舉原因（最多 200 字）')); if (reason) command('chat:report', { messageId: message.id, reason }).then(() => setNotice(t('檢舉已送出'))).catch(onError); }}>{t('檢舉')}</button>}{management && <><button onClick={() => command('chat:manage', { action: 'delete', messageId: message.id }).catch(onError)}>{t('刪除')}</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 10 }).catch(onError)}>{t('禁言')}</button><button onClick={() => command('chat:manage', { action: 'mute', userId: message.userId, minutes: 0 }).catch(onError)}>{t('解除禁言')}</button></>}</div>}</div>)}
         </div>
-        <div className="composer">{user ? <><div className="identity">以 <b>{user.nickname}</b> 發言 · 間隔 {chatSettings.slowSeconds} 秒</div><form onSubmit={send}><label className="sr-only" htmlFor="message">聊天訊息</label><div className="chat-input-row"><input id="message" maxLength="500" enterKeyHint="send" autoComplete="off" placeholder="傳送聊天訊息…" value={text} onChange={(e) => setText(e.target.value)} disabled={!connected}/><button className="primary" disabled={!connected || sending || !text.trim()}>{sending ? '傳送中…' : '傳送'}</button></div><div className="compose-footer"><span>Enter 直接傳送 · 一般聊天不會朗讀</span><span>{text.length}/500</span></div></form></> : <p>正在建立訪客身份，連線完成後即可聊天。</p>}
-          {error && <p className="error" role="alert">{error}</p>}
+        <div className="composer">{user ? <><div className="identity">{t('以')} <b>{user.nickname}</b> {t('發言 · 間隔')} {chatSettings.slowSeconds} {t('秒。')}</div><form onSubmit={send}><label className="sr-only" htmlFor="message">{t('聊天訊息')}</label><div className="chat-input-row"><input id="message" maxLength="500" enterKeyHint="send" autoComplete="off" placeholder={t('傳送聊天訊息…')} value={text} onChange={(e) => setText(e.target.value)} disabled={!connected}/><button className="primary" disabled={!connected || sending || !text.trim()}>{t(sending ? '傳送中…' : '傳送')}</button></div><div className="compose-footer"><span>{t('Enter 直接傳送 · 一般聊天不會朗讀')}</span><span>{text.length}/500</span></div></form><div className="gif-composer"><input ref={gifInput} type="file" accept="image/gif,.gif" className="sr-only" aria-label={t('選擇 GIF')} onChange={sendGif}/><button type="button" disabled={!connected || sending} onClick={() => gifInput.current?.click()}>GIF · {t('傳送 GIF')}</button><span>{t('GIF 不得超過 512 KB，尺寸不得超過 512 × 512。')}</span></div></> : <p>{t('正在建立訪客身份，連線完成後即可聊天。')}</p>}
+          {error && <p className="error" role="alert">{t(error)}</p>}
         </div>
       </aside></div>
-      <Account socket={socket} key={user?.id || 'guest'} user={user} available={accountsAvailable} onChange={reloadAccount} command={command} onError={onError}/>
-      {management && <Moderation command={command} onError={onError}/>}
-      {error && <p className="error" role="alert">{error}</p>}
-      {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="關閉分享提示" onClick={() => setNotice('')}>×</button></div>}
-      <footer><span>GROUP 09 / CLOUD-BASED LIVE STREAMING PLATFORM</span><span>連線數依分頁計算 · 聊天顯示最近 100 則 · 帳號與交易持久保存</span></footer>
+      <Account socket={socket} key={user?.id || 'guest'} user={user} available={accountsAvailable} onChange={reloadAccount} command={command} onError={onError} t={t} language={language}/>
+      {management && <Moderation command={command} onError={onError} t={t} language={language}/>}
+      {error && <p className="error" role="alert">{t(error)}</p>}
+      {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label={t('關閉分享提示')} onClick={() => setNotice('')}>×</button></div>}
+      <footer><span>GROUP 09 / CLOUD-BASED LIVE STREAMING PLATFORM</span><span>{t('連線數依分頁計算 · 聊天顯示最近 100 則 · 帳號與交易持久保存')}</span></footer>
     </main>
   </>;
 }

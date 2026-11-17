@@ -11,6 +11,8 @@ test('viewer UI keeps normal chat silent, Enter-native, and exposes all gift and
   assert.match(source, /GIFTS\.map/);
   assert.match(source, /<OBSControls/);
   assert.match(source, /QRCode\.toDataURL\(shareUrl/);
-  assert.match(source, />複製網址</);
-  assert.match(source, />顯示 QR Code</);
+  assert.match(source, /t\('複製網址'\)/);
+  assert.match(source, /t\('顯示 QR Code'\)/);
+  assert.match(source, /setLanguage\(\(value\) => value === 'zh' \? 'en' : 'zh'\)/);
+  assert.match(source, /accept="image\/gif,\.gif"/);
 });

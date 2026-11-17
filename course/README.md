@@ -12,6 +12,8 @@
 
 此更新尚未部署到 Azure；兩台實體 OBS、喇叭同開及獨立聽音仍待驗收。下方單主播／暱稱暫存描述為原始版本紀錄，帳號與雙來源配置以新指南為準。
 
+兩位主播及觀眾的網站操作與雙 OBS 控制測試，見 [eHub 快速使用與雙機測試](EHUB_QUICKSTART.md)。公開網站發布前須先完成此分支的伺服器部署。
+
 已部署的課程展示入口：[Cloud Live](http://20.89.110.14/group9/)。測試彩條結束後會顯示 OFFLINE，需由 OBS 開播才有影音。實際驗證範圍見 [VERIFICATION.md](VERIFICATION.md)。
 
 依 `Group9_英文講稿_2026-10-19.md` 的七頁內容實作：**OBS → RTMP → MediaMTX → HLS → React / hls.js**；聊天用 **Node.js / Socket.IO**。一間房、一位主播，影音與聊天分流。原本根目錄 WebRTC demo 與 `site/` LiveKit 版本保留。

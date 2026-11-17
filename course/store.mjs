@@ -23,7 +23,7 @@ export function openStore(path) {
     CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS broadcasts(id TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id), guest_id TEXT REFERENCES users(id), started_at TEXT NOT NULL, ended_at TEXT);
     CREATE TABLE IF NOT EXISTS donations(id TEXT PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), broadcast_id TEXT NOT NULL REFERENCES broadcasts(id), amount INTEGER NOT NULL CHECK(amount IN (1,5,10,25,50,100)), request_id TEXT NOT NULL, created_at TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', UNIQUE(sender_id,request_id), CHECK(sender_id<>recipient_id));
-    CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), nickname TEXT NOT NULL, text TEXT NOT NULL, at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), nickname TEXT NOT NULL, text TEXT NOT NULL, at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, gif_id TEXT NOT NULL DEFAULT '');
     CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), announcement TEXT NOT NULL DEFAULT '', slow_seconds INTEGER NOT NULL DEFAULT 1, voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60, words TEXT NOT NULL DEFAULT '[]', donations_enabled INTEGER NOT NULL DEFAULT 1);
     INSERT OR IGNORE INTO settings(id) VALUES(1);
     CREATE TABLE IF NOT EXISTS mutes(user_id TEXT PRIMARY KEY REFERENCES users(id), until_ms INTEGER NOT NULL);
@@ -52,6 +52,7 @@ export function openStore(path) {
   if (!db.prepare('PRAGMA table_info(users)').all().some((column) => column.name === 'trusted_second')) db.exec('ALTER TABLE users ADD COLUMN trusted_second INTEGER NOT NULL DEFAULT 0');
   if (!db.prepare('PRAGMA table_info(settings)').all().some((column) => column.name === 'voice_cooldown_seconds')) db.exec('ALTER TABLE settings ADD COLUMN voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60');
   if (!db.prepare('PRAGMA table_info(settings)').all().some((column) => column.name === 'donations_enabled')) db.exec('ALTER TABLE settings ADD COLUMN donations_enabled INTEGER NOT NULL DEFAULT 1');
+  if (!db.prepare('PRAGMA table_info(messages)').all().some((column) => column.name === 'gif_id')) db.exec("ALTER TABLE messages ADD COLUMN gif_id TEXT NOT NULL DEFAULT ''");
   const get = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
   const run = (sql, ...args) => db.prepare(sql).run(...args);
@@ -107,17 +108,20 @@ export function openStore(path) {
     return row ? user(row.user_id) : null;
   }
   function settings() { const row = get('SELECT * FROM settings WHERE id=1'); return { announcement: row.announcement, slowSeconds: Math.max(5, row.slow_seconds), voiceCooldownSeconds: Math.max(0, Math.min(3600, row.voice_cooldown_seconds)), donationsEnabled: Boolean(row.donations_enabled), words: JSON.parse(row.words) }; }
-  function history() { return all('SELECT id,user_id AS userId,nickname,text,at FROM (SELECT rowid AS sequence,* FROM messages WHERE deleted=0 ORDER BY rowid DESC LIMIT 100) ORDER BY sequence'); }
+  function history() { return all('SELECT id,user_id AS userId,nickname,text,gif_id AS gifId,at FROM (SELECT rowid AS sequence,* FROM messages WHERE deleted=0 ORDER BY rowid DESC LIMIT 100) ORDER BY sequence'); }
+  function gifVisible(id) { return Boolean(get('SELECT 1 FROM messages WHERE gif_id=? AND deleted=0', id)); }
+  function gifForMessage(id) { return get('SELECT gif_id AS gifId FROM messages WHERE id=? AND deleted=0', id)?.gifId || ''; }
   function audit(actor, action, details) { run('INSERT INTO audit VALUES(?,?,?,?,?)', randomUUID(), actor, action, JSON.stringify(details), new Date().toISOString()); }
-  function sendChat(account, text) {
-    const clean = checkText(text, 500, '訊息');
+  function sendChat(account, text, gifId = '') {
+    if (gifId && (typeof gifId !== 'string' || !/^[a-f0-9-]{36}$/.test(gifId) || text !== '')) throw new Error('GIF 貼圖格式錯誤。');
+    const clean = gifId ? '' : checkText(text, 500, '訊息');
     const config = settings();
     if ((get('SELECT until_ms FROM mutes WHERE user_id=?', account.id)?.until_ms || 0) > Date.now()) throw new Error('目前已被禁言。');
-    if (config.words.some((word) => clean.toLocaleLowerCase().includes(word.toLocaleLowerCase()))) throw new Error('訊息包含聊天室限制詞。');
+    if (clean && config.words.some((word) => clean.toLocaleLowerCase().includes(word.toLocaleLowerCase()))) throw new Error('訊息包含聊天室限制詞。');
     const previous = get('SELECT at FROM messages WHERE user_id=? ORDER BY rowid DESC LIMIT 1', account.id);
     if (previous && Date.now() - Date.parse(previous.at) < config.slowSeconds * 1000) throw new Error(`訊息傳送太快，請稍候 ${config.slowSeconds} 秒。`);
-    const message = { id: randomUUID(), userId: account.id, nickname: account.nickname, text: clean, at: new Date().toISOString() };
-    run('INSERT INTO messages(id,user_id,nickname,text,at) VALUES(?,?,?,?,?)', message.id, message.userId, message.nickname, message.text, message.at);
+    const message = { id: randomUUID(), userId: account.id, nickname: account.nickname, text: clean, gifId, at: new Date().toISOString() };
+    run('INSERT INTO messages(id,user_id,nickname,text,gif_id,at) VALUES(?,?,?,?,?,?)', message.id, message.userId, message.nickname, message.text, message.gifId, message.at);
     return message;
   }
   function moderate(actor, value) {
@@ -200,7 +204,7 @@ export function openStore(path) {
     const row = get('SELECT * FROM broadcasts WHERE ended_at IS NULL ORDER BY rowid DESC LIMIT 1');
     return { donationsEnabled: Boolean(settings().donationsEnabled), ...(row ? { broadcastId: row.id, host: { userId: row.host_id, nickname: user(row.host_id).nickname, path: 'live' }, guest: row.guest_id ? { userId: row.guest_id, nickname: user(row.guest_id).nickname, path: 'guest' } : null } : { broadcastId: null, host: null, guest: null }) };
   }
-  return { db, user, guest, register, login, session, newSession, newOBSDevice, obsDevice, settings, history, sendChat, moderate, report, donate, ledger, deleteDonation, room,
+  return { db, user, guest, register, login, session, newSession, newOBSDevice, obsDevice, settings, history, gifVisible, gifForMessage, sendChat, moderate, report, donate, ledger, deleteDonation, room,
     authorizeHost: (id) => { if (!run("UPDATE users SET role='host',trusted_second=1 WHERE id=? AND role IN ('viewer','host')", id).changes) throw new Error('找不到可授權的第二位主播。'); return user(id); },
     logout: (token) => run('DELETE FROM sessions WHERE token=?', hash(token || '')),
     rename: (id, name) => { const nickname = checkText(name, 24, '暱稱'); run('UPDATE users SET nickname=? WHERE id=?', nickname, id); return nickname; },
@@ -232,7 +236,7 @@ export function openStore(path) {
       const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,started_at) VALUES(?,?,?)', bid, admin.id, new Date().toISOString()); return bid;
     }),
     supportTotal: (id) => id ? get('SELECT COALESCE(SUM(amount),0) AS n FROM donations WHERE broadcast_id=?', id).n : 0,
-    reports: () => all('SELECT r.id,r.reason,r.created_at AS at,m.id AS messageId,m.text,m.nickname,m.user_id AS userId FROM reports r JOIN messages m ON m.id=r.message_id WHERE r.resolved=0 ORDER BY r.rowid DESC LIMIT 100'),
+    reports: () => all("SELECT r.id,r.reason,r.created_at AS at,m.id AS messageId,CASE WHEN m.gif_id<>'' THEN '[GIF]' ELSE m.text END AS text,m.nickname,m.user_id AS userId FROM reports r JOIN messages m ON m.id=r.message_id WHERE r.resolved=0 ORDER BY r.rowid DESC LIMIT 100"),
     mutes: () => all('SELECT m.user_id AS userId,u.nickname,m.until_ms AS untilMs FROM mutes m JOIN users u ON u.id=m.user_id WHERE m.until_ms>? ORDER BY m.until_ms DESC', Date.now()),
     audit: () => all('SELECT actor_id AS actorId,action,details,at FROM audit ORDER BY rowid DESC LIMIT 100'),
     close: () => db.close(),

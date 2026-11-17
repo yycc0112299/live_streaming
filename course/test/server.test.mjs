@@ -2,10 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { io as connect } from 'socket.io-client';
 import { createCourseApp } from '../server.mjs';
 
 async function setup(t) {
+  const gifDir = mkdtempSync(join(tmpdir(), 'group9-gif-test-'));
+  t.after(() => rmSync(gifDir, { recursive: true, force: true }));
   let ready = false;
   let guestReady = false;
   let fail = false;
@@ -27,7 +32,7 @@ async function setup(t) {
   upstream.listen(0, '127.0.0.1');
   await once(upstream, 'listening');
   const upstreamUrl = `http://127.0.0.1:${upstream.address().port}`;
-  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, webrtcUrl: upstreamUrl, pollMs: 60000, dbPath: ':memory:', publicOrigin: '' });
+  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, webrtcUrl: upstreamUrl, pollMs: 60000, dbPath: ':memory:', gifDir, publicOrigin: '' });
   app.server.listen(0, '127.0.0.1');
   await once(app.server, 'listening');
   t.after(async () => { await app.close(); await new Promise((done) => upstream.close(done)); });
@@ -121,6 +126,40 @@ test('signed-in viewers choose nicknames and exchange text with per-account spam
   b.disconnect();
   await departed;
   assert.equal((await (await fetch(url + '/api/status')).json()).viewers, 1);
+});
+
+test('authenticated GIF stickers share chat history, slow mode, moderation, and safe media serving', async (t) => {
+  const s = await setup(t);
+  const { socket: sender, token } = await member(t, s, 'GifSender');
+  const { socket: moderator } = await member(t, s, 'GifHost', 'host');
+  const gif = Buffer.from('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', 'base64');
+  const post = (body, headers = {}) => fetch(s.url + '/api/chat/gif', { method: 'POST', headers: { Cookie: `group9_session=${token}`, 'Content-Type': 'image/gif', ...headers }, body });
+  assert.equal((await fetch(s.url + '/api/chat/gif', { method: 'POST', headers: { 'Content-Type': 'image/gif' }, body: gif })).status, 401);
+  assert.equal((await post(gif, { Origin: 'https://elsewhere.example' })).status, 403);
+  assert.equal((await post(gif, { 'Content-Type': 'image/png' })).status, 415);
+  assert.equal((await post(Buffer.from('not a GIF'))).status, 415);
+  assert.equal((await post(Buffer.alloc(512 * 1024 + 1))).status, 413);
+  const received = once(moderator, 'chat');
+  const upload = await post(gif);
+  assert.equal(upload.status, 201);
+  const { message } = await upload.json();
+  assert.equal((await received)[0].gifId, message.gifId);
+  assert.equal(message.text, '');
+  const media = await fetch(s.url + '/api/chat/gif/' + message.gifId);
+  assert.equal(media.status, 200);
+  assert.equal(media.headers.get('content-type'), 'image/gif');
+  assert.deepEqual(Buffer.from(await media.arrayBuffer()), gif);
+  assert.equal((await fetch(s.url + '/api/chat/gif/' + message.gifId, { method: 'HEAD' })).status, 200);
+  assert.equal((await post(gif)).status, 400);
+  assert.equal((await emit(sender, 'chat', 'too fast')).error.includes('太快'), true);
+  const newcomer = await client(t, s.url);
+  const history = once(newcomer, 'history');
+  newcomer.disconnect();
+  newcomer.connect();
+  assert.equal((await history)[0].some((item) => item.gifId === message.gifId), true);
+  assert.deepEqual(await emit(moderator, 'chat:manage', { action: 'delete', messageId: message.id }), { ok: true });
+  assert.equal((await fetch(s.url + '/api/chat/gif/' + message.gifId)).status, 404);
+  assert.equal((await fetch(s.url + '/api/chat/gif/../../server.mjs')).status, 404);
 });
 test('reconnect provides persistent history; guest likes are shared and throttled', async (t) => {
   const s = await setup(t); const { url } = s;

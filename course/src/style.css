@@ -745,4 +745,15 @@ footer {
 .speech-redeem { padding:12px 0; display:flex; flex-wrap:wrap; gap:10px; align-items:end; }
 .speech-redeem label { display:flex; flex:1; min-width:180px; flex-direction:column; gap:6px; font-size:13px; }
 .speech-redeem input,.composer input { width:100%; padding:12px; border:1px solid #384457; border-radius:8px; background:#0c121e; color:#e8edf7; box-sizing:border-box; }
+
+.topbar-tools { display:flex; align-items:center; gap:12px; }
+.language-toggle { border:1px solid #5b7896; background:#162a3d; color:#eff9ff; border-radius:8px; padding:7px 10px; cursor:pointer; white-space:nowrap; }
+.language-toggle:focus-visible,.gif-composer button:focus-visible { outline:3px solid #65ddf5; outline-offset:2px; }
+.gif-composer { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px; }
+.gif-composer button { border:1px solid #5b7896; border-radius:8px; background:#19314a; color:#eff9ff; padding:7px 10px; cursor:pointer; }
+.gif-composer button:disabled { opacity:.5; cursor:not-allowed; }
+.gif-composer span { color:#9ba7b9; font-size:11px; }
+.chat-gif { display:block; max-width:min(180px,100%); max-height:180px; object-fit:contain; border-radius:8px; }
+.message-line:has(.chat-gif) { align-items:flex-start; flex-wrap:wrap; }
+@media(max-width:760px) { .topbar-tools { gap:6px; } .language-toggle { font-size:12px; padding:6px; } }
 .speech-redeem p { flex-basis:100%; margin:0; }

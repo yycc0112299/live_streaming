@@ -1,8 +1,9 @@
 import { createOBSControls } from './obs-controls.mjs';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, unlink } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { resolve, extname, sep } from 'node:path';
+import { resolve, extname, sep, dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Server } from 'socket.io';
@@ -12,7 +13,7 @@ import { createOBSRoom } from './room.mjs';
 const dist = fileURLToPath(new URL('./dist/', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
-export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), publicOrigin = process.env.PUBLIC_ORIGIN || '' } = {}) {
+export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), gifDir = process.env.GIF_DIR || join(dirname(dbPath === ':memory:' ? fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)) : dbPath), 'chat-gifs'), publicOrigin = process.env.PUBLIC_ORIGIN || '' } = {}) {
   const store = openStore(dbPath);
   let likes = 0;
   let status = { live: false, available: false, sources: { live: { live: false, available: false }, guest: { live: false, available: false } } };
@@ -38,6 +39,42 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     res.setHeader('Cache-Control', 'no-store');
     try {
       const url = new URL(req.url, 'http://localhost');
+      if (url.pathname === '/api/chat/gif' && req.method === 'POST') {
+        if (!sameOrigin(req) || req.headers['sec-fetch-site'] === 'cross-site') return json(res, 403, { error: '拒絕跨網站上傳。' });
+        if (!secureTransport(req)) return json(res, 403, { error: '上傳需要 HTTPS。' });
+        const account = store.session(cookieToken(req));
+        if (!account) return json(res, 401, { error: '請先登入。' });
+        if (req.headers['content-type']?.split(';')[0].trim().toLowerCase() !== 'image/gif') return json(res, 415, { error: '僅支援 GIF 圖片。' });
+        const chunks = []; let size = 0;
+        for await (const chunk of req) {
+          size += chunk.length;
+          if (size > 512 * 1024) return json(res, 413, { error: 'GIF 不得超過 512 KB。' });
+          chunks.push(chunk);
+        }
+        const bytes = Buffer.concat(chunks);
+        const width = bytes.length >= 10 ? bytes.readUInt16LE(6) : 0;
+        const height = bytes.length >= 10 ? bytes.readUInt16LE(8) : 0;
+        if (bytes.length < 20 || !/^GIF8[79]a$/.test(bytes.toString('ascii', 0, 6)) || bytes.at(-1) !== 0x3b || !width || !height || width > 512 || height > 512) return json(res, 415, { error: 'GIF 檔案或尺寸無效（最大 512 × 512）。' });
+        const id = randomUUID();
+        await mkdir(gifDir, { recursive: true, mode: 0o700 });
+        await writeFile(join(gifDir, id + '.gif'), bytes, { flag: 'wx', mode: 0o600 });
+        try {
+          const message = store.sendChat(account, '', id);
+          io.emit('chat', message);
+          return json(res, 201, { message });
+        } catch (error) {
+          await unlink(join(gifDir, id + '.gif')).catch(() => {});
+          return json(res, 400, { error: error.message });
+        }
+      }
+      const gifMatch = /^\/api\/chat\/gif\/([a-f0-9-]{36})$/.exec(url.pathname);
+      if (gifMatch && (req.method === 'GET' || req.method === 'HEAD')) {
+        if (!store.gifVisible(gifMatch[1])) return res.writeHead(404).end();
+        try {
+          const bytes = await readFile(join(gifDir, gifMatch[1] + '.gif'));
+          return res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': bytes.length }).end(req.method === 'HEAD' ? undefined : bytes);
+        } catch { return res.writeHead(404).end(); }
+      }
       if (url.pathname.startsWith('/api/account/')) {
         if (!sameOrigin(req) || req.headers['sec-fetch-site'] === 'cross-site') return json(res, 403, { error: '拒絕跨網站帳號操作。' });
         const action = url.pathname.slice('/api/account/'.length);
@@ -224,10 +261,12 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     });
     handle('chat:report', (value) => { store.report(account(), value); });
     handle('chat:manage', (value) => {
+      const deletedGif = value?.action === 'delete' ? store.gifForMessage(value.messageId) : '';
       store.moderate(account(), value);
       const { words, ...settings } = store.settings();
       io.emit('chat:settings', settings);
       if (value.action === 'delete') io.emit('chat:deleted', value.messageId);
+      if (deletedGif) void unlink(join(gifDir, deletedGif + '.gif')).catch(() => {});
     });
     handle('chat:review', () => {
       if (!['host', 'admin'].includes(account().role)) throw new Error('需要聊天室管理權限。');

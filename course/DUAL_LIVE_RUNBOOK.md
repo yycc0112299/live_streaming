@@ -2,6 +2,13 @@
 
 這是從 **Azure VM 與兩台 OBS 都已關閉** 到兩格同時 `LIVE` 的固定流程。公開觀看入口：<https://group9liveb11302133.japaneast.cloudapp.azure.com/group9/>。
 
+## 角色分工
+
+- **第一位主播／VM 操作者**負責啟動 Azure VM、確認網站與串流服務已恢復、處理兩位主播的網路白名單，並啟動自己的 `live` OBS。VM 尚未準備好時，第二位先不要開始推流。
+- **第二位主播**不負責啟動或管理 VM，也不需登入 Azure Portal 或修改 NSG。收到第一位確認「網站可用、VM 已準備好」後，使用自己的帳號進入公開網站並加入第二主播位置，再用自己電腦的 `guest` OBS 開始串流。
+- 網站上的「以第二位主播加入」只加入直播間並占用 `guest` 位置；影音仍由第二位自己的 OBS 傳送。第二位須在自己的 OBS 按「開始串流」，或使用已配置好的自動開播流程。第二位只停止自己的 `guest` OBS，不影響第一位的 `live` OBS。
+- 本 Runbook 說明 Group 9 雙 OBS／MediaMTX 流程。獨立的 LiveKit 手機直播網站是另一條流程，不使用此處的 VM、`live` 或 `guest` OBS 路徑。
+
 ## 固定前提（每台電腦只做一次）
 
 - Azure VM 已部署目前 `main`，MediaMTX 的 `live`、`guest` 發布路徑與 HTTPS 網站已存在。
@@ -13,13 +20,13 @@
 
 ## 每次開播
 
-1. 在 Azure Portal 啟動 `Capstone / B11302133`，等待狀態為 **Running**。
-2. 用公開網址確認網站可開啟；若 VM 剛啟動，等待 `group9-web`、`group9-media` 與 Apache 恢復。
-3. 分別取得第一台與第二台目前的公開 IP。兩個 IP 都必須各有一條 Azure NSG **TCP 1936、來源 `/32`、Allow** 規則。IP 改變時只新增／更新該台的 `/32`，不得對所有 IP 開放 1936。
-4. 第一台開 OBS，確認標題為 `設定檔: Group9 Local - 場景: Group9 Course`，按 **開始串流**。
-5. 第二台登入 Windows。已完成固定電腦設定時，Startup 會開 OBS、連上自己的 `guest` 路徑並開始串流；若沒有自動啟動，執行 `powershell -File course/scripts/start-auto-broadcast.ps1`。
-6. 各自確認 OBS 顯示「停止串流」、傳送位元組持續增加、沒有重連／逾時。
-7. 重新整理公開網站，第一格與第二格都必須顯示 `LIVE`；Azure MediaMTX 讀回 `live`、`guest` 皆為 ready/online，且有非零 inbound／outbound bytes。
+1. **第一位主播／VM 操作者**在 Azure Portal 啟動 `Capstone / B11302133`，等待 **Running**，並確認公開網站、`group9-web`、`group9-media` 與 Apache 已恢復。
+2. 第一位確認兩位主播目前的外網 IP 都已列入各自的 Azure NSG TCP 1936 `/32` Allow 規則。第二位若遇到連線問題，將錯誤告知第一位處理；不要自行登入 Azure 或更動規則。
+3. 第一位開 OBS，確認標題為 `設定檔: Group9 Local - 場景: Group9 Course`，按 **開始串流**。
+4. 第二位打開公開網址並登入自己的第二主播帳號，按 **以第二位主播加入**。
+5. 第二位在自己的 OBS 載入已設定好的 `guest` profile，按 **開始串流**。若已啟用固定電腦自動開播，先確認 OBS 已自行開始，不要再重複啟動推流。
+6. 兩位各自確認 OBS 顯示「停止串流」、傳送位元組持續增加且沒有重連／逾時。若第二位 OBS 連線失敗，第二位停止重試並請第一位檢查 VM、服務和網路白名單。
+7. 重新整理公開網站，第一格與第二格都必須顯示 `LIVE`；第一位負責確認 MediaMTX `live`、`guest` 的服務狀態。第二位只回報自己的 OBS 狀態與網站第二格結果。
 
 ## 可直接貼給 Codex 的提示詞
 
@@ -32,7 +39,7 @@
 ### 第二位主播電腦
 
 ```text
-請依 course/DUAL_LIVE_RUNBOOK.md 與 course/SECOND_COMPUTER_CODEX.md 執行第二位主播部分。假設 OBS 已關閉：確認 Azure TCP 1936 可由我目前網路連線；若我的公開 IP 不在 Azure NSG，請建立僅限此 /32 的 TCP 1936 Allow 規則，保留既有規則且不要對所有 IP 開放。使用本機已設定的 guest OBS profile，確認 WebSocket 4455，執行 course/scripts/start-auto-broadcast.ps1 或開 OBS 後由固定電腦控制器開始 guest 推流。以 OBS 傳送位元組、公開網站第二格 LIVE 與 Azure MediaMTX guest ready/online 驗證。不要在終端、聊天或 Git 輸出任何金鑰、密碼或 .runtime 私人檔內容。
+請依 course/DUAL_LIVE_RUNBOOK.md 與 course/SECOND_COMPUTER_CODEX.md 執行第二位主播本次開播。第一位主播已負責啟動並準備 Azure VM、網站、串流服務與我的 TCP 1936 網路白名單；不要登入 Azure，不要修改 VM、NSG、防火牆、NGINX、Docker 或串流設定。請打開公開 Group 9 網站，以我的第二主播帳號按「以第二位主播加入」，再使用我自己的 guest OBS profile 按「開始串流」；如果固定電腦自動開播已運作，不要重複啟動。只確認我的 OBS 正在串流且位元組增加、沒有重連，以及網站第二格顯示 LIVE。第一格的 live 串流不得停止或變更。不要輸出任何金鑰、密碼或私人設定內容。
 ```
 
 ## 收播

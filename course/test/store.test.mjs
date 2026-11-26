@@ -7,6 +7,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openStore } from '../store.mjs';
 
+test('top supporters leaderboard ranks senders of the current broadcast and exposes no account ids', async () => {
+  const store = openStore(':memory:');
+  try {
+    const host = await store.register({ username: 'lbhost', nickname: 'Host', password: 'a-long-test-password' });
+    store.db.prepare("UPDATE users SET role='host' WHERE id=?").run(host.id);
+    const bid = store.start(host.id);
+    assert.deepEqual(store.leaderboard(bid), []);
+    assert.deepEqual(store.leaderboard(null), []);
+    const fans = [];
+    for (const name of ['Amy', 'Bo', 'Cindy']) fans.push(await store.register({ username: `fan_${name.toLowerCase()}`, nickname: name, password: 'a-long-test-password' }));
+    const give = (user, amount) => store.donate(user, { amount, requestId: crypto.randomUUID(), broadcastId: bid }, bid);
+    give(fans[0], 10); give(fans[1], 50); give(fans[0], 25); give(fans[2], 5); give(fans[2], 1);
+    const board = store.leaderboard(bid);
+    assert.deepEqual(board.map((r) => [r.nickname, r.total, r.gifts]), [['Bo', 50, 1], ['Amy', 35, 2], ['Cindy', 6, 2]]);
+    for (const row of board) assert.deepEqual(Object.keys(row).sort(), ['gifts', 'nickname', 'total']);
+    assert.equal(store.leaderboard(bid, 1).length, 1);
+    store.end(bid);
+    const next = store.start(host.id);
+    assert.deepEqual(store.leaderboard(next), [], 'a new broadcast starts with an empty board');
+  } finally { store.close(); }
+});
+
 test('SQLite reopen retains accounts, sessions, balanced ledger, chat deletion, mutes and moderation audit', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'group9-store-'));
   const path = join(dir, 'live.sqlite'); let store = openStore(path);

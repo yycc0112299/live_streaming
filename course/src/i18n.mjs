@@ -143,6 +143,7 @@ export const english = {
   '無效的 OBS 操作。': 'Invalid OBS action.',
   '請先連接你這台電腦的 OBS 控制程式。': 'Connect this computer’s OBS controller first.',
   '上一個 OBS 操作尚未完成。': 'The previous OBS action is still running.',
+  '本場應援榜': 'Top supporters', '次': 'gifts', '還沒有人送禮物，成為第一位支持者吧！': 'No gifts yet. Be the first supporter!',
   '手機／瀏覽器直播': 'Phone / browser broadcast', '第一格': 'stream 1', '第二格': 'stream 2',
   '不用安裝 OBS：手機或電腦直接用相機推流到你的直播格（WebRTC WHIP）。同一格同時只能有一個來源，若 OBS 正在推流請先停止。': 'No OBS needed: stream this phone or computer camera straight into your slot (WebRTC WHIP). Each slot takes one source at a time, so stop OBS first if it is streaming.',
   '這個瀏覽器不支援相機直播，請使用新版 Chrome 或 Safari，並透過 HTTPS 開啟網站。': 'This browser cannot broadcast its camera. Use a recent Chrome or Safari over HTTPS.',

@@ -197,7 +197,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   });
   const room = createOBSRoom(io, store);
   const obsControls = createOBSControls(io, store, secureTransport);
-  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), room: currentRoom }; }
+  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), room: currentRoom }; }
   function broadcast() { io.emit('state', snapshot()); }
   function poll() {
     if (polling) return polling;

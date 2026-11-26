@@ -187,7 +187,7 @@ async function icon(Comp, color, size = 256) {
     [fa.FaMobileScreenButton, HEX.accent4, 'Phone broadcasting', 'Join slot 2 from a phone browser with WebRTC'],
     [fa.FaComments, HEX.accent3, 'Real-time chat', 'Announcements, reports, mute, slow mode, GIFs'],
     [fa.FaUserShield, HEX.accent5, 'Accounts and roles', 'Viewer, host and admin roles stored in SQLite'],
-    [fa.FaGift, HEX.accent2, 'Gifts and voice messages', 'Demo points ledger, no double charge'],
+    [fa.FaGift, HEX.accent2, '3D gifts and top fans', 'WebGL gift effects, supporter ranking, no double charge'],
     [fa.FaLanguage, HEX.accent1, 'Bilingual and shareable', 'Chinese / English, share link and QR code'],
   ];
   for (let i = 0; i < feats.length; i++) {
@@ -197,7 +197,7 @@ async function icon(Comp, color, size = 256) {
     await dotIcon(s, Ic, x + 0.3, y + 0.3, 0.75, hex, t);
     text(s, [{ text: t, options: { bold: true, fontSize: 19, breakLine: true } }, { text: d, options: { fontSize: 14, color: C.background2 } }], { x: x + 0.3, y: y + 1.2, w: 3.2, h: 0.95 });
   }
-  s.addNotes('Beyond the core video and chat, we added the features planned in our first presentation: viewer count, likes and gifts, plus moderation and accounts. The teacher asked that a phone can join the live stream, so a phone can now take slot two directly from the browser.');
+  s.addNotes('Beyond the core video and chat, we added the features planned in our first presentation: viewer count, likes and gifts, plus moderation and accounts. Gifts now play as real-time 3D models rendered with WebGL, and a top-supporters board ranks fans for the current broadcast. The teacher asked that a phone can join the live stream, so a phone can now take slot two directly from the browser.');
 
   // 6 · Results: stat callouts ---------------------------------------------
   pres.addSection({ title: 'Results and Analysis' });
@@ -207,7 +207,7 @@ async function icon(Comp, color, size = 256) {
     ['2 / 2', 'live slots on one page', 'Host OBS and a WebRTC source at the same time', C.accent1],
     ['≈ 2 s', 'website latency (HLS)', 'Camera to viewer screen on the public site', C.accent5],
     ['10 / 10', 'viewer tabs joined', 'Concurrent join test on the public site', C.accent3],
-    ['31 / 31', 'automated tests passed', 'Chat, accounts, ledger, WHIP authorization', C.accent4],
+    ['30 / 30', 'automated tests passed', 'Chat, accounts, ledger, WHIP auth, leaderboard', C.accent4],
   ];
   for (let i = 0; i < stats.length; i++) {
     const [big, label, d, col] = stats[i];
@@ -219,7 +219,7 @@ async function icon(Comp, color, size = 256) {
   card(s, 0.6, 4.95, 12.1, 1.7, 'Method card');
   await dotIcon(s, fa.FaClipboardCheck, 0.85, 5.42, 0.75, HEX.accent1, 'Method');
   text(s, [{ text: 'How we checked: ', options: { bold: true } }, { text: 'OBS output bytes kept growing with no reconnects, MediaMTX reported each path ready, the public page played 1280×720 video, and the phone path arrived as H.264 + Opus. Results come from the live Azure site, not only local tests.', options: { color: HEX.lt2 } }], { x: 1.85, y: 5.15, w: 10.65, h: 1.3, fontSize: 15, valign: 'middle' });
-  s.addNotes('These numbers come from the real Azure site. Both slots were live at the same time. Viewers see the stream about two seconds after the camera. Ten browser tabs joined at once without failure, and all thirty-one automated tests pass. Following the W10 advice, we only claim what we verified: for example, ten viewers is our tested capacity, not a guess.');
+  s.addNotes('These numbers come from the real Azure site. Both slots were live at the same time. Viewers see the stream about two seconds after the camera. Ten browser tabs joined at once without failure, and all thirty automated tests pass. Following the W10 advice, we only claim what we verified: for example, ten viewers is our tested capacity, not a guess.');
 
   // 7 · Analysis: latency + encoder ----------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Results and Analysis' });
@@ -370,7 +370,7 @@ async function icon(Comp, color, size = 256) {
   s.addText('Questions and answers', { placeholder: 'body' });
   card(s, 7.35, 1.4, 5.4, 4.3, 'Summary card');
   text(s, 'Summary and next steps', { x: 7.65, y: 1.7, w: 4.8, h: 0.5, fontSize: 20, bold: true });
-  const nextItems = ['Delivered: OBS + phone broadcasting, chat, accounts and gifts on Azure', 'Measured: about 2 s latency, 10/10 viewers, 31/31 tests', 'Next: TURN server for strict mobile networks', 'Next: WebRTC playback for sub-second viewing', 'Next: recording and replay'];
+  const nextItems = ['Delivered: OBS + phone broadcasting, chat, accounts and gifts on Azure', 'Measured: about 2 s latency, 10/10 viewers, 30/30 tests', 'Next: TURN server for strict mobile networks', 'Next: WebRTC playback for sub-second viewing', 'Next: recording and replay'];
   text(s, nextItems.map((t, k) => ({ text: t, options: { bullet: true, breakLine: k < nextItems.length - 1 } })), { x: 7.65, y: 2.35, w: 4.85, h: 3.6, fontSize: 15, paraSpaceAfter: 8 });
   text(s, 'github.com/yycc0112299/live_streaming', { x: 0.6, y: 5.3, w: 6.3, h: 0.4, fontSize: 14, color: C.background2 });
   s.addNotes('To summarize: we delivered a working cloud platform where OBS and phones can broadcast, with chat, accounts and gifts, all on Azure. Next we would add a TURN server for strict mobile networks, WebRTC playback for sub-second viewing, and recording. Thank you, we are happy to take questions.');

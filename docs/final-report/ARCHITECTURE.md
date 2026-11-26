@@ -45,6 +45,8 @@ Everything runs on one Azure VM (`Capstone / B11302133`, Ubuntu 24.04 ARM64, Jap
 - **MediaMTX 1.21.2.** One server provides RTMPS ingest, WebRTC (WHIP/WHEP), LL-HLS and a control API. It replaces the lab's NGINX-RTMP + FFmpeg; we remux without transcoding, so a small 2-vCPU ARM VM is enough. `overridePublisher: false`: each slot accepts one source at a time.
 - **Node.js server.** Static React build, REST API, Socket.IO events, HLS/WHEP proxy for viewers, and an authenticated WHIP proxy. The browser never sees a stream key.
 - **React + hls.js frontend (W05).** Two-slot player, chat, gifts and point ledger, moderation tools, phone broadcast panel, Chinese/English switch, share link and QR code.
+- **3D gift effects.** Three.js (WebGL) models for all six gift tiers, lazy-loaded only when a gift plays; falls back to the 2D SVG animation without WebGL or with reduced motion.
+- **Top supporters board.** Per-broadcast ranking of gift totals (nickname, points, count only), pushed live with the Socket.IO `state` event.
 - **SQLite.** Persistent accounts and sessions (scrypt-hashed passwords), broadcasts, an atomic donation ledger, chat history, moderation audit.
 
 ## Security choices

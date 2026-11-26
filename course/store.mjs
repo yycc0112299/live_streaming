@@ -236,6 +236,8 @@ export function openStore(path) {
       const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,started_at) VALUES(?,?,?)', bid, admin.id, new Date().toISOString()); return bid;
     }),
     supportTotal: (id) => id ? get('SELECT COALESCE(SUM(amount),0) AS n FROM donations WHERE broadcast_id=?', id).n : 0,
+    // Top supporters of one broadcast (public: nickname and totals only, never account ids).
+    leaderboard: (id, limit = 5) => id ? all('SELECT u.nickname AS nickname, SUM(d.amount) AS total, COUNT(*) AS gifts FROM donations d JOIN users u ON u.id=d.sender_id WHERE d.broadcast_id=? GROUP BY d.sender_id ORDER BY total DESC, MIN(d.rowid) ASC LIMIT ?', id, limit) : [],
     reports: () => all("SELECT r.id,r.reason,r.created_at AS at,m.id AS messageId,CASE WHEN m.gif_id<>'' THEN '[GIF]' ELSE m.text END AS text,m.nickname,m.user_id AS userId FROM reports r JOIN messages m ON m.id=r.message_id WHERE r.resolved=0 ORDER BY r.rowid DESC LIMIT 100"),
     mutes: () => all('SELECT m.user_id AS userId,u.nickname,m.until_ms AS untilMs FROM mutes m JOIN users u ON u.id=m.user_id WHERE m.until_ms>? ORDER BY m.until_ms DESC', Date.now()),
     audit: () => all('SELECT actor_id AS actorId,action,details,at FROM audit ORDER BY rowid DESC LIMIT 100'),

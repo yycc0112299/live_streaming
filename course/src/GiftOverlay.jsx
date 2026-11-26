@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GIFTS } from '../gifts.mjs';
 function GiftArt({ gift }) {
   if (gift.kind === 'heart') return <svg viewBox="0 0 240 220" aria-hidden="true"><path d="M120 205C103 181 30 139 30 78C30 22 99 12 120 58C141 12 210 22 210 78C210 139 137 181 120 205Z" fill="#ff4d88" stroke="#ffd4e3" strokeWidth="7"/><path d="M66 63Q87 39 105 66" fill="none" stroke="#fff" strokeWidth="10" strokeLinecap="round" opacity=".75"/></svg>;
@@ -9,18 +9,40 @@ function GiftArt({ gift }) {
   if (gift.kind === 'carnival') return <svg viewBox="0 0 600 400" aria-hidden="true"><defs><linearGradient id="castlePaint" x2="0" y2="1"><stop stopColor="#ffe3a4"/><stop offset="1" stopColor="#ce6399"/></linearGradient><radialGradient id="nightGlow"><stop stopColor="#ffa9ec" stopOpacity=".6"/><stop offset="1" stopColor="#7c3eff" stopOpacity="0"/></radialGradient></defs><ellipse cx="300" cy="210" rx="290" ry="180" fill="url(#nightGlow)"/><path d="M50 355Q300 300 550 355" fill="none" stroke="#ffce82" strokeWidth="8"/><g className="carnival-wheel" style={{ transformOrigin:'455px 178px' }}><circle cx="455" cy="178" r="91" fill="#302568" stroke="#ffe3a7" strokeWidth="6"/>{Array.from({length:8},(_,i)=>{const a=i*Math.PI/4,x=455+91*Math.cos(a),y=178+91*Math.sin(a);return <g key={i}><path d={`M455 178L${x} ${y}`} stroke="#f8acdf" strokeWidth="3"/><rect x={x-12} y={y-9} width="24" height="22" rx="6" fill={i%2?'#69e4e8':'#ffb3d8'} stroke="#ffe8b3" strokeWidth="2"/></g>;})}<circle cx="455" cy="178" r="17" fill="#ffdc8c"/></g><path d="M455 178L406 342H504Z" fill="#d784b0" stroke="#ffdfa2" strokeWidth="4"/><path d="M96 320V186H168V320M202 320V141H284V320M316 320V186H380V320" fill="url(#castlePaint)" stroke="#ffe9b5" strokeWidth="4"/><path d="M84 186L132 100L180 186ZM190 141L243 45L296 141ZM304 186L348 100L392 186Z" fill="#bb508b" stroke="#ffe8af" strokeWidth="4"/><path d="M168 320V223H316V320" fill="#dc91bd" stroke="#ffdc94" strokeWidth="4"/><path d="M220 320V276Q242 238 264 276V320" fill="#56346d" stroke="#ffe1a6" strokeWidth="4"/>{[124,235,340].map((x)=><path key={x} d={`M${x} 200V176Q${x+9} 164 ${x+18} 176V200Z`} fill="#fff2b8"/>)}<path d="M243 45V13L283 26L243 36M132 100V70L167 82L132 94M348 100V70L383 82L348 94" fill="#77f0d5" stroke="#ffe6ae" strokeWidth="2"/><text x="300" y="389" textAnchor="middle" fill="#fff0b7" fontSize="27" fontWeight="bold" letterSpacing="7">CARNIVAL</text></svg>;
   return gift.icon;
 }
+
+// 3D is used when the browser has WebGL and the viewer has not asked for reduced motion;
+// otherwise (or if the 3D module fails to load) the original 2D SVG animation plays.
+const prefers3D = () => {
+  try { return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; } catch { return true; }
+};
+
 export default function GiftOverlay({ gifts, onDone, t }) {
   const current = gifts[0];
   const gift = GIFTS.find((item) => item.amount === current?.amount);
+  const canvas = useRef(null);
+  const [mode, setMode] = useState(prefers3D() ? '3d' : '2d');
   useEffect(() => {
     if (!gift) return;
     const timer = setTimeout(onDone, gift.duration);
     return () => clearTimeout(timer);
   }, [current?.id]);
+  useEffect(() => {
+    if (!gift || mode !== '3d') return undefined;
+    let stop; let cancelled = false;
+    import('./gift3d.js').then(({ supportsWebGL, playGift3D }) => {
+      if (cancelled) return;
+      if (!supportsWebGL()) { setMode('2d'); return; }
+      stop = playGift3D(canvas.current, gift.kind, gift.duration);
+    }).catch(() => { if (!cancelled) setMode('2d'); });
+    return () => { cancelled = true; stop?.(); };
+  }, [current?.id, mode]);
   if (!gift) return null;
-  return <div key={current.id} className={`gift-stage gift-${gift.kind} gift-tier-${gift.amount}`} style={{ '--gift-scale': gift.amount / 100 }} role="status" aria-label={`${current.nickname} ${t('送出')} ${t(gift.name)} ${gift.amount} ${t('點')}`}>
-    <div className="gift-halo"/><div className="gift-sprite" aria-hidden="true"><GiftArt gift={gift}/></div>
-    <div className="gift-sparkles" aria-hidden="true">{Array.from({ length: gift.amount >= 100 ? 42 : gift.amount >= 50 ? 28 : gift.amount >= 25 ? 16 : 8 }, (_, i) => <i key={i} style={{ '--i': i }}>{gift.kind === 'rose' ? '🌸' : gift.kind === 'heart' ? '♥' : '✦'}</i>)}</div>
+  return <div key={current.id} className={`gift-stage gift-${gift.kind} gift-tier-${gift.amount} ${mode === '3d' ? 'gift-3d' : ''}`} style={{ '--gift-scale': gift.amount / 100 }} role="status" aria-label={`${current.nickname} ${t('送出')} ${t(gift.name)} ${gift.amount} ${t('點')}`}>
+    <div className="gift-halo"/>
+    {mode === '3d'
+      ? <div ref={canvas} className="gift-canvas" aria-hidden="true"/>
+      : <><div className="gift-sprite" aria-hidden="true"><GiftArt gift={gift}/></div>
+        <div className="gift-sparkles" aria-hidden="true">{Array.from({ length: gift.amount >= 100 ? 42 : gift.amount >= 50 ? 28 : gift.amount >= 25 ? 16 : 8 }, (_, i) => <i key={i} style={{ '--i': i }}>{gift.kind === 'rose' ? '🌸' : gift.kind === 'heart' ? '♥' : '✦'}</i>)}</div></>}
     <div className="gift-caption"><strong>{current.nickname}</strong><span>{t('送出')} {t(gift.name)} · {gift.amount} {t('點')}</span>{current.message && <p>{current.message}</p>}</div>
   </div>;
 }

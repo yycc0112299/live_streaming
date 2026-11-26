@@ -275,10 +275,18 @@ OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome �
 
 ## 2026-11-27 手機／瀏覽器直播（WebRTC WHIP）與第一路開播
 
-- 分支 `feature/phone-browser-broadcast` commit `d001560` 部署為 `/opt/group9-live/releases/phone-d001560-web-v14`。VM 上 `npm test` 通過（本機 31/31）並以 `APP_BASE=/group9/` 建置。`group9-web` drop-in 新增 `MEDIAMTX_CONFIG=/opt/group9-live/shared/mediamtx.yml`，讓伺服器替 WHIP 加上發布帳密；瀏覽器不會拿到金鑰。舊 drop-in 備份在 `/opt/group9-live/release.conf.before-v14`。
+- 分支 `feature/phone-browser-broadcast` commit `d001560` 部署為 `/opt/group9-live/releases/phone-d001560-web-v14`。VM 上 `npm test` 通過（本機 29/29；先前誤記為 31/31，已更正）並以 `APP_BASE=/group9/` 建置。`group9-web` drop-in 新增 `MEDIAMTX_CONFIG=/opt/group9-live/shared/mediamtx.yml`，讓伺服器替 WHIP 加上發布帳密；瀏覽器不會拿到金鑰。舊 drop-in 備份在 `/opt/group9-live/release.conf.before-v14`。
 - Apache 實際由 `conf-enabled/group9-assets.conf` 從 `/var/www/html/group9/assets/` 提供 JS／CSS。新版 assets 必須複製到該資料夾，否則網頁空白（本次曾出現 404，複製後恢復 200）。
 - 公開 `/group9/webrtc/guest/whip` 未登入時回 401。單元測試涵蓋：未加入直播間（403）、guest 推 `live`（403）、陌生帳號（403）、跨站 Origin（403）；擁有者推流時 201，伺服器加上 Basic 授權。
 - 真實 VM 媒體驗證：本機合成畫面（canvas + 440 Hz 測試音）經 WebRTC 推到 `guest`，ICE 連線 `connected`，瀏覽器送出 H.264。MediaMTX 讀回 `guest ready=True source=webRTCSession tracks=[Opus, H264]`，公開網站第二格 `LIVE`，HLS 播放器時間持續增加，約 30 秒後停止並釋放 guest。實體手機跨電信網路尚未驗收。
 - 第一位主播電腦（新的一台）建立 OBS `Group9 Local`／`Group9 Course`：USB 攝影機、預設麥克風、1280×720 30 FPS、CBR 1500 Kbps、keyframe 1 秒。x264 在本機出現約 19% skipped frames，改 NVENC 後 0 skipped，約 1.7 Mbps，無重連。MediaMTX `live ready=True source=rtmpsConn`，公開第一格 `LIVE`，播放 1280×720。
 - Azure NSG 新增 `RTMPS_1936_HOST_20261127`（本機目前 IP `/32`）與 `WebRTC_TCP_8189`（ICE-TCP 備援，Any）。UDP 8189 原本已開放。
 - 安全：`course/.runtime/OBS-GUEST-PRIVATE.txt` 與含發布密碼的 `deploy/mediamtx.azure.private.yml` 先前被提交到公開 repo，本次已移出版本控制，改提供去除密碼的 `deploy/mediamtx.azure.example.yml`。但歷史紀錄仍查得到，而且 NSG 對 Any 開放 TCP 8889（MediaMTX WHIP），所以 **live／guest 發布密碼必須輪替**。輪替後兩台 OBS 都要更新串流金鑰；完成前，任何拿到舊密碼的人都可能經 8889 推流。
+
+## 2026-11-27 3D 禮物動畫與本場應援榜
+
+- 禮物動畫改為即時 3D（Three.js 0.180.0／WebGL），六級禮物都用程式建模，沒有外部素材：立體愛心、玫瑰、火箭（尾焰粒子）、跑車（駛入、置中 360° 展示、駛離）、星光派對（煙火粒子）、嘉年華摩天輪（煙火與鏡頭環繞）。3D 模組（`src/gift3d.js`）在第一次送禮時才延遲載入，gzip 約 134 KB，不影響首頁載入。瀏覽器不支援 WebGL、使用者開啟「減少動態效果」，或模組載入失敗時，自動退回原本的 2D SVG 動畫。每次禮物結束都釋放 WebGL context，避免連續送禮時超過瀏覽器上限。
+- 參考：WebGL／Three.js 播放禮物特效（Qixiu PC Web 案例），以及禮物事件經即時 socket 送達、依序排隊播放的做法。
+- 新增「本場應援榜」（參考 YouTube Live 的熱門粉絲排行榜）：依目前場次的禮物總點數排名，最多 5 名，只公開暱稱、點數與次數，不公開帳號 ID。送禮後隨 `state` 事件即時更新；新的一場從空白開始。
+- 驗證：`npm test` 30/30（新增應援榜排序、隱私與換場測試）。正式建置通過，`gift3d` 為獨立 chunk。開發預覽頁 `gift-preview.html` 逐一確認六種 3D 模型都能渲染。本機完整 App（暫存資料庫、管理員開啟應援）中，以訪客送出 25 點跑車：3D canvas 出現在播放器上方、說明文字正確、應援榜即時顯示第 1 名。
+- 尚未部署：VM 依使用者要求已關機（deallocated）。下次開機時依 `PHONE_BROADCAST.md` 的「部署到 Azure VM」步驟部署，並記得把 `dist/assets/*`（含 `gift3d-*.js`）複製到 `/var/www/html/group9/assets/`。

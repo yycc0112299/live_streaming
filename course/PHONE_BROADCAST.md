@@ -34,6 +34,16 @@
 - Azure NSG 需開放 **UDP 8189 與 TCP 8189**（手機的網路位址不固定，所以來源是 Any；只接受經過已驗證 WHIP 交握的 ICE 連線）。8889 不對外開放，WHIP 一律經過 Node 驗證。
 - 網站必須是 HTTPS（手機瀏覽器只有在安全來源才允許相機）。
 
+## 部署到 Azure VM（2026-11-27 實際做法）
+
+1. 在 VM 上 clone 已推送的分支，把 `course/` 複製成新的 `/opt/group9-live/releases/<名稱>`，執行 `npm ci`、`npm test`，再執行 `APP_BASE=/group9/ npm run build`，最後把擁有者改為 `group9-live`。
+2. 改 `/etc/systemd/system/group9-web.service.d/release.conf`：`WorkingDirectory` 和 `ExecStart` 指向新 release，並加上 `Environment=MEDIAMTX_CONFIG=/opt/group9-live/shared/mediamtx.yml`。改之前先備份舊檔。
+3. 執行 `systemctl daemon-reload && systemctl restart group9-web`。MediaMTX 不用重啟，OBS 直播不會中斷。
+4. **把新 release 的 `dist/assets/*` 複製到 `/var/www/html/group9/assets/`**。Apache 從這裡提供 JS／CSS，沒複製的話網頁會是空白。
+5. 驗證：公開頁面的 JS／CSS 都回 200；未登入時 `POST /group9/webrtc/guest/whip` 回 401。
+
+回滾：把備份的 `release.conf` 複製回去，再 `daemon-reload` 並重啟 `group9-web`。
+
 ## 限制
 
 - 手機在行動網路下若同時封鎖 UDP 與 TCP 8189，就無法連線；需改用 Wi-Fi 或日後加 TURN。

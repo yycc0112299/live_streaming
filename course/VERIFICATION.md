@@ -272,3 +272,13 @@ OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome �
 
 - commit `5a06ab1` 已部署；第一位 `host` 登入後自動建立等待房間，第二位具主播權限的帳號可自行按「以第二位主播加入」。22/22 測試與正式建置通過，第二台 Codex 步驟見 `SECOND_COMPUTER_CODEX.md`。
 - Azure RTMPS 1936 白名單依當次網路更新為 `49.214.7.169/32`。OBS 经 RTMPS 启动成功，读回 `outputActive=true`、无重连；公开 API 显示 `live=true`，浏览器实际播放 1280×720，播放时间持续增加。第二路仍为离线，尚未进行第二台实体电脑验收。
+
+## 2026-11-27 手機／瀏覽器直播（WebRTC WHIP）與第一路開播
+
+- 分支 `feature/phone-browser-broadcast` commit `d001560` 部署為 `/opt/group9-live/releases/phone-d001560-web-v14`。VM 上 `npm test` 通過（本機 31/31）並以 `APP_BASE=/group9/` 建置。`group9-web` drop-in 新增 `MEDIAMTX_CONFIG=/opt/group9-live/shared/mediamtx.yml`，讓伺服器替 WHIP 加上發布帳密；瀏覽器不會拿到金鑰。舊 drop-in 備份在 `/opt/group9-live/release.conf.before-v14`。
+- Apache 實際由 `conf-enabled/group9-assets.conf` 從 `/var/www/html/group9/assets/` 提供 JS／CSS。新版 assets 必須複製到該資料夾，否則網頁空白（本次曾出現 404，複製後恢復 200）。
+- 公開 `/group9/webrtc/guest/whip` 未登入時回 401。單元測試涵蓋：未加入直播間（403）、guest 推 `live`（403）、陌生帳號（403）、跨站 Origin（403）；擁有者推流時 201，伺服器加上 Basic 授權。
+- 真實 VM 媒體驗證：本機合成畫面（canvas + 440 Hz 測試音）經 WebRTC 推到 `guest`，ICE 連線 `connected`，瀏覽器送出 H.264。MediaMTX 讀回 `guest ready=True source=webRTCSession tracks=[Opus, H264]`，公開網站第二格 `LIVE`，HLS 播放器時間持續增加，約 30 秒後停止並釋放 guest。實體手機跨電信網路尚未驗收。
+- 第一位主播電腦（新的一台）建立 OBS `Group9 Local`／`Group9 Course`：USB 攝影機、預設麥克風、1280×720 30 FPS、CBR 1500 Kbps、keyframe 1 秒。x264 在本機出現約 19% skipped frames，改 NVENC 後 0 skipped，約 1.7 Mbps，無重連。MediaMTX `live ready=True source=rtmpsConn`，公開第一格 `LIVE`，播放 1280×720。
+- Azure NSG 新增 `RTMPS_1936_HOST_20261127`（本機目前 IP `/32`）與 `WebRTC_TCP_8189`（ICE-TCP 備援，Any）。UDP 8189 原本已開放。
+- 安全：`course/.runtime/OBS-GUEST-PRIVATE.txt` 與含發布密碼的 `deploy/mediamtx.azure.private.yml` 先前被提交到公開 repo，本次已移出版本控制，改提供去除密碼的 `deploy/mediamtx.azure.example.yml`。但歷史紀錄仍查得到，而且 NSG 對 Any 開放 TCP 8889（MediaMTX WHIP），所以 **live／guest 發布密碼必須輪替**。輪替後兩台 OBS 都要更新串流金鑰；完成前，任何拿到舊密碼的人都可能經 8889 推流。

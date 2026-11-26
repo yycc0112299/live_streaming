@@ -2,6 +2,8 @@
 
 ## Group 9 course final version
 
+**手機直播（老師要求：手機可加入第二格）：[PHONE_BROADCAST.md](course/PHONE_BROADCAST.md)**。期末報告規劃：[docs/FINAL_REPORT_PLAN.md](docs/FINAL_REPORT_PLAN.md)。
+
 **兩台固定電腦請先讀：[雙主播開播 Runbook](course/DUAL_LIVE_RUNBOOK.md)**。它涵蓋 Azure VM、兩個 `/32` RTMPS 規則、第一／第二台 OBS 與雙路 LIVE 驗證；故障請看 [疑難排解](course/TROUBLESHOOTING.md)。第二位第一次完成固定電腦設定後，日後登入 Windows 會自動開啟 OBS 並開始自己的第二路推流。
 
 2026-10-23 update: the Azure site now runs `course/` with **two fixed OBS computers in one viewing page**, persistent SQLite accounts, chat moderation, and an atomic/idempotent demo support ledger. A pinned open-source AEC Client engine feeds an OBS Browser Source through a local driver-free bridge. See **[DUAL_OBS.md](course/DUAL_OBS.md)** for setup and acceptance limits. The two physical speaker/microphone systems still need a no-headphones test.

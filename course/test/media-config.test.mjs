@@ -4,7 +4,13 @@ import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, renameSync, rmSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { addSecondOBS } from '../scripts/media-config.mjs';
+import { addSecondOBS, publishCredentials } from '../scripts/media-config.mjs';
+
+test('server finds the publish user of each path for browser WHIP without exposing read users', () => {
+  const config = addSecondOBS(readFileSync(new URL('../deploy/mediamtx.yml', import.meta.url), 'utf8').replace('REPLACE_WITH_RANDOM_SECRET', 'b'.repeat(64)), 'c'.repeat(64));
+  assert.deepEqual(publishCredentials(config), { live: `broadcaster:${'b'.repeat(64)}`, guest: `guest_broadcaster:${'c'.repeat(64)}` });
+  assert.deepEqual(publishCredentials('authInternalUsers:\n  - user: any\n    permissions:\n      - action: read\n        path: live\n'), {});
+});
 
 test('second OBS gets a separate publishing identity and path without replacing the first', () => {
   const original = readFileSync(new URL('../deploy/mediamtx.yml', import.meta.url), 'utf8');

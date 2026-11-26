@@ -143,6 +143,17 @@ export const english = {
   '無效的 OBS 操作。': 'Invalid OBS action.',
   '請先連接你這台電腦的 OBS 控制程式。': 'Connect this computer’s OBS controller first.',
   '上一個 OBS 操作尚未完成。': 'The previous OBS action is still running.',
+  '手機／瀏覽器直播': 'Phone / browser broadcast', '第一格': 'stream 1', '第二格': 'stream 2',
+  '不用安裝 OBS：手機或電腦直接用相機推流到你的直播格（WebRTC WHIP）。同一格同時只能有一個來源，若 OBS 正在推流請先停止。': 'No OBS needed: stream this phone or computer camera straight into your slot (WebRTC WHIP). Each slot takes one source at a time, so stop OBS first if it is streaming.',
+  '這個瀏覽器不支援相機直播，請使用新版 Chrome 或 Safari，並透過 HTTPS 開啟網站。': 'This browser cannot broadcast its camera. Use a recent Chrome or Safari over HTTPS.',
+  '來源': 'Source', '前鏡頭／電腦鏡頭': 'Front / computer camera', '後鏡頭': 'Rear camera', '分享螢幕': 'Share screen',
+  '開始手機直播': 'Start phone broadcast', '停止手機直播': 'Stop phone broadcast', '狀態：': 'Status: ', '已傳送': 'sent',
+  '未開播': 'not live', '開啟相機中…': 'opening camera…', '連線中…': 'connecting…', '連線失敗': 'connection failed',
+  '手機／瀏覽器直播連線中斷，請重新開始。': 'The phone / browser broadcast disconnected. Start it again.',
+  '請允許網站使用相機與麥克風。': 'Allow this site to use the camera and microphone.',
+  '瀏覽器直播需要 HTTPS。': 'Browser broadcasting requires HTTPS.', '你不是這一路的上鏡主播。': 'You are not the broadcaster of this stream.',
+  '伺服器尚未設定這一路的發布權限。': 'The server has no publish permission configured for this stream.',
+  '這一路已經有 OBS 或其他裝置在推流，請先停止另一個來源。': 'OBS or another device is already streaming to this slot. Stop that source first.',
 };
 
 export function translate(language, key) {

@@ -9,12 +9,21 @@ import { pipeline } from 'node:stream/promises';
 import { Server } from 'socket.io';
 import { openStore } from './store.mjs';
 import { createOBSRoom } from './room.mjs';
+import { publishCredentials } from './scripts/media-config.mjs';
 
 const dist = fileURLToPath(new URL('./dist/', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
-export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), gifDir = process.env.GIF_DIR || join(dirname(dbPath === ':memory:' ? fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)) : dbPath), 'chat-gifs'), publicOrigin = process.env.PUBLIC_ORIGIN || '' } = {}) {
+export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), gifDir = process.env.GIF_DIR || join(dirname(dbPath === ':memory:' ? fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)) : dbPath), 'chat-gifs'), publicOrigin = process.env.PUBLIC_ORIGIN || '', mediaConfigPaths = process.env.MEDIAMTX_CONFIG ? [process.env.MEDIAMTX_CONFIG] : ['mediamtx.duo.yml', 'mediamtx.yml'].map((name) => fileURLToPath(new URL(`./.runtime/${name}`, import.meta.url))), publishAuth = null } = {}) {
   const store = openStore(dbPath);
+  // Browser (phone or PC) publishing: the server, not the browser, holds the MediaMTX publish password.
+  async function publisherAuth(path) {
+    if (publishAuth) return publishAuth[path] || '';
+    for (const file of mediaConfigPaths) {
+      try { const found = publishCredentials(await readFile(file, 'utf8'))[path]; if (found) return found; } catch {}
+    }
+    return '';
+  }
   let likes = 0;
   let status = { live: false, available: false, sources: { live: { live: false, available: false }, guest: { live: false, available: false } } };
   let polling;
@@ -108,10 +117,23 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
         finally { authActive--; }
       }
       if (url.pathname.startsWith('/webrtc/')) {
-        // Only viewer WHEP endpoints; never proxy WHIP publishing or arbitrary paths.
-        if (!/^\/webrtc\/(?:live|guest)\/whep(?:\/[a-f0-9-]{36})?$/.test(url.pathname)) return res.writeHead(404).end();
+        // Viewer WHEP is public; WHIP publishing only for the logged-in broadcaster who owns that path.
+        const webrtcMatch = /^\/webrtc\/(live|guest)\/(whep|whip)(?:\/[a-f0-9-]{36})?$/.exec(url.pathname);
+        if (!webrtcMatch) return res.writeHead(404).end();
         if (!['OPTIONS', 'POST', 'PATCH', 'DELETE'].includes(req.method)) return res.writeHead(405).end();
         if (!sameOrigin(req)) return res.writeHead(403).end();
+        let authorization;
+        if (webrtcMatch[2] === 'whip') {
+          if (!secureTransport(req)) return json(res, 403, { error: '瀏覽器直播需要 HTTPS。' });
+          const account = store.session(cookieToken(req));
+          if (!account) return json(res, 401, { error: '請先登入。' });
+          const current = room.state();
+          const owned = current.host?.userId === account.id ? 'live' : current.guest?.userId === account.id ? 'guest' : null;
+          if (owned !== webrtcMatch[1]) return json(res, 403, { error: '你不是這一路的上鏡主播。' });
+          const credential = await publisherAuth(owned);
+          if (!credential) return json(res, 503, { error: '伺服器尚未設定這一路的發布權限。' });
+          authorization = `Basic ${Buffer.from(credential).toString('base64')}`;
+        }
         const chunks = [];
         let size = 0;
         for await (const chunk of req) {
@@ -121,7 +143,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
         }
         const upstream = await fetch(`${webrtcUrl}${url.pathname.slice(7)}`, {
           method: req.method,
-          headers: { 'Content-Type': req.headers['content-type'] || 'application/sdp', ...(req.headers['if-match'] ? { 'If-Match': req.headers['if-match'] } : {}) },
+          headers: { 'Content-Type': req.headers['content-type'] || 'application/sdp', ...(req.headers['if-match'] ? { 'If-Match': req.headers['if-match'] } : {}), ...(authorization ? { Authorization: authorization } : {}) },
           body: size ? Buffer.concat(chunks) : undefined,
           signal: AbortSignal.timeout(15000),
           redirect: 'error',
@@ -131,8 +153,8 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
         const session = upstream.headers.get('location');
         if (session) {
           const path = new URL(session, `${webrtcUrl}${url.pathname.slice(7)}`).pathname;
-          if (!new RegExp(`^/${url.pathname.split('/')[2]}/whep/[a-f0-9-]{36}$`).test(path)) throw new Error('Invalid WHEP session');
-          headers.location = `./whep/${path.split('/').pop()}`;
+          if (!new RegExp(`^/${webrtcMatch[1]}/${webrtcMatch[2]}/[a-f0-9-]{36}$`).test(path)) throw new Error('Invalid WebRTC session');
+          headers.location = `./${webrtcMatch[2]}/${path.split('/').pop()}`;
         }
         res.writeHead(upstream.status, headers).end(Buffer.from(await upstream.arrayBuffer()));
         return;

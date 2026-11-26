@@ -689,6 +689,10 @@ footer {
 .ledger table { border-collapse:collapse; font-size:12px; width:100%; }
 .ledger td,.ledger th { text-align:left; border-bottom:1px solid #303949; padding:8px; }
 .management article { border-bottom:1px solid #303949; padding:12px 0; }
+.browser-broadcast { border-color:#5b3a4a; }
+.browser-broadcast select { border:1px solid #384457; padding:6px; border-radius:6px; background:#0c121e; color:#e8edf7; }
+.broadcast-preview { display:block; width:100%; max-width:420px; aspect-ratio:16/9; object-fit:cover; background:#000; border-radius:10px; transform:scaleX(-1); }
+.browser-broadcast button { min-height:40px; }
 @media(max-width:480px) { .duo-grid { grid-template-columns:1fr; } .account-form { flex-direction:column; align-items:stretch; } }
 @media(max-width:900px) { .gift-options { grid-template-columns:repeat(3,1fr); } }
 

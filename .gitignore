@@ -6,3 +6,4 @@ coverage/
 /course/.runtime/obs-aec-backup.json
 /site/.sites-checkout/
 /.env.livekit.local
+/course/deploy/*.private.yml

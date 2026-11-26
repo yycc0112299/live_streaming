@@ -14,7 +14,11 @@ async function setup(t) {
   let ready = false;
   let guestReady = false;
   let fail = false;
+  const whipAuth = [];
   const upstream = createServer((req, res) => {
+    const whip = /^\/(live|guest)\/whip$/.exec(req.url);
+    if (whip && req.method === 'POST') { whipAuth.push([whip[1], req.headers.authorization]); return res.writeHead(201, { Location: `/${whip[1]}/whip/12345678-1234-1234-1234-123456789abc`, 'Content-Type': 'application/sdp' }).end(`${whip[1]}-publish-answer`); }
+    if (/^\/(live|guest)\/whip\/12345678-1234-1234-1234-123456789abc$/.test(req.url) && req.method === 'DELETE') return res.writeHead(200).end();
     if (req.url === '/v3/paths/get/live') {
       res.writeHead(fail ? 503 : 200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ready }));
@@ -32,11 +36,11 @@ async function setup(t) {
   upstream.listen(0, '127.0.0.1');
   await once(upstream, 'listening');
   const upstreamUrl = `http://127.0.0.1:${upstream.address().port}`;
-  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, webrtcUrl: upstreamUrl, pollMs: 60000, dbPath: ':memory:', gifDir, publicOrigin: '' });
+  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, webrtcUrl: upstreamUrl, pollMs: 60000, dbPath: ':memory:', gifDir, publicOrigin: '', publishAuth: { live: 'broadcaster:live-secret', guest: 'guest_broadcaster:guest-secret' } });
   app.server.listen(0, '127.0.0.1');
   await once(app.server, 'listening');
   t.after(async () => { await app.close(); await new Promise((done) => upstream.close(done)); });
-  return { app, url: `http://127.0.0.1:${app.server.address().port}`, live: (value) => { ready = value; }, guestLive: (value) => { guestReady = value; }, fail: (value) => { fail = value; } };
+  return { app, whipAuth, url: `http://127.0.0.1:${app.server.address().port}`, live: (value) => { ready = value; }, guestLive: (value) => { guestReady = value; }, fail: (value) => { fail = value; } };
 }
 async function client(t, url, options = {}) {
   const socket = connect(url, { transports: ['websocket'], reconnection: false, ...options });
@@ -67,7 +71,32 @@ test('WHEP negotiation and cleanup work without exposing publishing or arbitrary
   for (const method of ['PATCH', 'DELETE']) assert.equal((await fetch(session, { method })).status, 204);
   assert.equal((await fetch(url + '/webrtc/live/whep', { method: 'POST', body: 'x'.repeat(65537) })).status, 413);
   assert.equal((await fetch(url + '/webrtc/live/whep', { method: 'POST', headers: { Origin: 'https://foreign.example' } })).status, 403);
-  for (const path of ['/webrtc/live/whip', '/webrtc/other/whep', '/webrtc/live/whep/not-a-session']) assert.equal((await fetch(url + path, { method: 'POST' })).status, 404);
+  for (const path of ['/webrtc/other/whep', '/webrtc/other/whip', '/webrtc/live/whep/not-a-session']) assert.equal((await fetch(url + path, { method: 'POST' })).status, 404);
+  assert.equal((await fetch(url + '/webrtc/live/whip', { method: 'POST', body: 'offer' })).status, 401);
+});
+
+test('phone/browser WHIP publishing is limited to each logged-in broadcaster and adds the server-side key', async (t) => {
+  const s = await setup(t);
+  const host = await member(t, s, 'HostPC', 'host');
+  const phone = await member(t, s, 'PhoneGuest');
+  const stranger = await member(t, s, 'Stranger');
+  const post = (path, token, headers = {}) => fetch(`${s.url}/webrtc/${path}/whip`, { method: 'POST', headers: { 'Content-Type': 'application/sdp', Cookie: `group9_session=${token}`, ...headers }, body: 'v=0 offer' });
+  assert.equal((await post('guest', phone.token)).status, 403, 'not in the room yet');
+  assert.ok((await emit(phone.socket, 'room:join')).ok);
+  assert.equal((await post('live', phone.token)).status, 403, 'guest cannot publish to live');
+  assert.equal((await post('guest', stranger.token)).status, 403);
+  assert.equal((await post('guest', phone.token, { Origin: 'https://foreign.example' })).status, 403);
+  const published = await post('guest', phone.token);
+  assert.equal(published.status, 201);
+  assert.equal(await published.text(), 'guest-publish-answer');
+  const session = new URL(published.headers.get('location'), `${s.url}/webrtc/guest/whip`);
+  assert.equal(session.pathname, '/webrtc/guest/whip/12345678-1234-1234-1234-123456789abc');
+  assert.equal((await fetch(session, { method: 'DELETE', headers: { Cookie: `group9_session=${phone.token}` } })).status, 200);
+  assert.equal((await post('live', host.token)).status, 201);
+  assert.deepEqual(s.whipAuth, [
+    ['guest', `Basic ${Buffer.from('guest_broadcaster:guest-secret').toString('base64')}`],
+    ['live', `Basic ${Buffer.from('broadcaster:live-secret').toString('base64')}`],
+  ]);
 });
 
 test('live/offline state comes from MediaMTX and distinguishes service failure', async (t) => {

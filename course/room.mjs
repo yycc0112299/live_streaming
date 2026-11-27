@@ -71,5 +71,5 @@ export function createOBSRoom(io, store) {
       } catch (error) { ack({ error: error.message }); }
     });
   }
-  return { attach, state };
+  return { attach, state, notify };
 }

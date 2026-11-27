@@ -14,7 +14,7 @@ import { publishCredentials } from './scripts/media-config.mjs';
 const dist = fileURLToPath(new URL('./dist/', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
-export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), gifDir = process.env.GIF_DIR || join(dirname(dbPath === ':memory:' ? fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)) : dbPath), 'chat-gifs'), publicOrigin = process.env.PUBLIC_ORIGIN || '', mediaConfigPaths = process.env.MEDIAMTX_CONFIG ? [process.env.MEDIAMTX_CONFIG] : ['mediamtx.duo.yml', 'mediamtx.yml'].map((name) => fileURLToPath(new URL(`./.runtime/${name}`, import.meta.url))), publishAuth = null } = {}) {
+export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), gifDir = process.env.GIF_DIR || join(dirname(dbPath === ':memory:' ? fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)) : dbPath), 'chat-gifs'), publicOrigin = process.env.PUBLIC_ORIGIN || '', mediaConfigPaths = process.env.MEDIAMTX_CONFIG ? [process.env.MEDIAMTX_CONFIG] : ['mediamtx.duo.yml', 'mediamtx.yml'].map((name) => fileURLToPath(new URL(`./.runtime/${name}`, import.meta.url))), publishAuth = null, guestIdleMs = Number(process.env.GUEST_IDLE_MS) || 180000, now = Date.now } = {}) {
   const store = openStore(dbPath);
   // Browser (phone or PC) publishing: the server, not the browser, holds the MediaMTX publish password.
   async function publisherAuth(path) {
@@ -27,6 +27,8 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   let likes = 0;
   let status = { live: false, available: false, sources: { live: { live: false, available: false }, guest: { live: false, available: false } } };
   let polling;
+  // Second slot: a joined guest who has not published for guestIdleMs is released so others can join.
+  let guestIdle = null;
   let authActive = 0;
   const authAttempts = new Map();
   const cookieToken = (req) => /(?:^|;\s*)group9_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
@@ -197,8 +199,16 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   });
   const room = createOBSRoom(io, store);
   const obsControls = createOBSControls(io, store, secureTransport);
-  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), room: currentRoom }; }
+  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), guestIdleLeft: guestIdle && currentRoom.guest?.userId === guestIdle.userId ? Math.max(0, Math.ceil((guestIdle.since + guestIdleMs - now()) / 1000)) : null, room: currentRoom }; }
   function broadcast() { io.emit('state', snapshot()); }
+  function releaseIdleGuest() {
+    const current = room.state(); const guest = current.guest; const source = status.sources?.guest;
+    if (!guest || source?.live) { guestIdle = null; return; }
+    if (!source?.available) return; // media server unknown: never kick on a monitoring blip
+    if (guestIdle?.userId !== guest.userId || guestIdle.broadcastId !== current.broadcastId) { guestIdle = { userId: guest.userId, broadcastId: current.broadcastId, since: now() }; return; }
+    if (now() - guestIdle.since < guestIdleMs) return;
+    store.releaseGuest(current.broadcastId, guest.userId); guestIdle = null; room.notify();
+  }
   function poll() {
     if (polling) return polling;
     polling = (async () => {
@@ -215,7 +225,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       const sources = Object.fromEntries(paths);
       status = { ...sources.live, sources };
     } catch { status = { live: false, available: false }; }
-    finally { polling = undefined; broadcast(); }
+    finally { try { releaseIdleGuest(); } catch {} polling = undefined; broadcast(); }
     })();
     return polling;
   }
@@ -296,7 +306,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     });
     socket.on('disconnect', broadcast);
   });
-  return { server, io, store, poll, close: async () => { clearInterval(timer); await new Promise((done) => io.close(done)); if (polling) await polling; store.close(); } };
+  return { server, io, store, poll, setClock: (fn) => { now = fn; }, close: async () => { clearInterval(timer); await new Promise((done) => io.close(done)); if (polling) await polling; store.close(); } };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

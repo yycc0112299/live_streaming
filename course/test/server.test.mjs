@@ -99,6 +99,30 @@ test('phone/browser WHIP publishing is limited to each logged-in broadcaster and
   ]);
 });
 
+test('an idle second broadcaster is released automatically, but not while streaming or during a media outage', async (t) => {
+  const s = await setup(t);
+  let clock = 1_000_000; s.app.setClock(() => clock);
+  await member(t, s, 'HostIdle', 'host');
+  const guest = await member(t, s, 'GuestIdle');
+  assert.ok((await emit(guest.socket, 'room:join')).ok);
+  await s.app.poll(); // timer starts
+  let state = await (await fetch(s.url + '/api/status')).json();
+  assert.equal(state.room.guest.nickname, 'GuestIdle'); assert.equal(state.guestIdleLeft, 180);
+  clock += 120_000; s.guestLive(true); await s.app.poll(); // streaming resets the timer
+  clock += 400_000; await s.app.poll();
+  assert.equal((await (await fetch(s.url + '/api/status')).json()).room.guest.nickname, 'GuestIdle');
+  s.guestLive(false); await s.app.poll(); // stopped: timer starts again
+  clock += 179_000; await s.app.poll();
+  assert.ok((await (await fetch(s.url + '/api/status')).json()).room.guest, 'still within 3 minutes');
+  s.fail(true); clock += 60_000; await s.app.poll();
+  assert.ok((await (await fetch(s.url + '/api/status')).json()).room.guest, 'no kick while MediaMTX is unreachable');
+  s.fail(false); await s.app.poll();
+  state = await (await fetch(s.url + '/api/status')).json();
+  assert.equal(state.room.guest, null); assert.equal(state.guestIdleLeft, null);
+  const other = await member(t, s, 'NextGuest');
+  assert.ok((await emit(other.socket, 'room:join')).ok, 'slot is free for the next broadcaster');
+});
+
 test('live/offline state comes from MediaMTX and distinguishes service failure', async (t) => {
   const s = await setup(t);
   await s.app.poll();

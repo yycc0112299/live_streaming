@@ -226,6 +226,7 @@ export function openStore(path) {
       run('UPDATE broadcasts SET guest_id=? WHERE id=? AND guest_id IS NULL', id, active.broadcastId);
       return active.broadcastId;
     }),
+    releaseGuest: (broadcastId, userId) => run('UPDATE broadcasts SET guest_id=NULL WHERE id=? AND guest_id=? AND ended_at IS NULL', broadcastId, userId).changes > 0,
     end: (id) => run('UPDATE broadcasts SET ended_at=? WHERE id=? AND ended_at IS NULL', new Date().toISOString(), id),
     setDonationsEnabled: (enabled) => { run('UPDATE settings SET donations_enabled=? WHERE id=1', enabled ? 1 : 0); return Boolean(enabled); },
     ensureDonationRoom: () => transaction(() => {

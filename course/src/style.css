@@ -699,6 +699,7 @@ footer {
 .leaderboard .who { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .leaderboard .points { color:#ffe29c; font-size:13px; }
 .browser-broadcast { border-color:#5b3a4a; }
+.guest-idle-notice { margin:16px 0 0; padding:10px 14px; border:1px solid #6b5a2a; border-radius:12px; background:#221d10; color:#f5d98b; font-size:14px; }
 .browser-broadcast select { border:1px solid #384457; padding:6px; border-radius:6px; background:#0c121e; color:#e8edf7; }
 .broadcast-preview { display:block; width:100%; max-width:420px; aspect-ratio:16/9; object-fit:cover; background:#000; border-radius:10px; transform:scaleX(-1); }
 .browser-broadcast button { min-height:40px; }

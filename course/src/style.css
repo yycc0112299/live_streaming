@@ -709,6 +709,12 @@ footer {
 .leaderboard-note { margin:8px 0 0; font-size:12px; }
 .gift-sound-toggle { margin-left:10px; margin-right:auto; padding:3px 10px; border:1px solid #384457; border-radius:999px; background:#0c121e; color:#9fb0c8; font-size:12px; cursor:pointer; }
 .gift-sound-toggle.on { border-color:#3f7f6d; color:#9ff3d4; }
+.layout-switch { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+.layout-switch button { flex:1; min-width:110px; padding:10px 12px; border:1px solid #384457; border-radius:10px; background:#0c121e; color:#c7d2e3; font-weight:600; cursor:pointer; }
+.layout-switch button.on { border-color:#78e1c2; background:#10251f; color:#9ff3d4; box-shadow:0 0 0 1px #78e1c2 inset; }
+.layout-switch button:disabled { opacity:.6; cursor:wait; }
+.mic-toggle { border:1px solid #3f7f6d; background:#10251f; color:#9ff3d4; }
+.mic-toggle.muted { border-color:#8a3b4c; background:#2a1018; color:#ffb3c2; }
 .guest-idle-notice { margin:16px 0 0; padding:10px 14px; border:1px solid #6b5a2a; border-radius:12px; background:#221d10; color:#f5d98b; font-size:14px; }
 .browser-broadcast select { border:1px solid #384457; padding:6px; border-radius:6px; background:#0c121e; color:#e8edf7; }
 .broadcast-preview { display:block; width:100%; max-width:420px; aspect-ratio:16/9; object-fit:cover; background:#000; border-radius:10px; transform:scaleX(-1); }

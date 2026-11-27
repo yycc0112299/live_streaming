@@ -1,10 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createCompositor, needsCamera, needsScreen } from './compositor.js';
+import { LAYOUTS } from './OBSControls.jsx';
 
 // Publishes this device's camera (phone or PC) or screen to the broadcaster's own
 // MediaMTX path with WebRTC WHIP. The server checks the login and adds the publish
 // password, so the browser never sees a stream key. MediaMTX then serves the same
 // path to viewers as HLS / WHEP, exactly like an OBS RTMP source.
+// On a PC the picture comes from a canvas compositor, so the broadcaster can switch
+// between camera, screen + camera and screen with one click while live.
 const base = import.meta.env.BASE_URL;
+const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 
 function preferH264(transceiver) {
   // HLS needs H.264, so ask the browser for it first (VP8 stays as a fallback).
@@ -43,55 +48,104 @@ export async function publishWHIP(path, stream) {
   return { pc, close: async () => { pc.close(); await fetch(session, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {}); } };
 }
 
+const stopMedia = (media) => media?.getTracks().forEach((track) => track.stop());
+
 export default function BrowserBroadcast({ path, t, onError }) {
   const preview = useRef(null);
-  const live = useRef(null);
+  const live = useRef(null); // { session, stream, comp, cam, screen, mic }
+  const mobile = isMobile();
   const [source, setSource] = useState('user');
+  const [layout, setLayout] = useState('camera');
+  const [micOn, setMicOn] = useState(true);
+  const [switching, setSwitching] = useState(false);
   const [status, setStatus] = useState('idle');
   const [stats, setStats] = useState(null);
-  const canShare = Boolean(navigator.mediaDevices?.getDisplayMedia) && !/Android|iPhone|iPad/i.test(navigator.userAgent);
+  const canShare = Boolean(navigator.mediaDevices?.getDisplayMedia) && !mobile;
   const supported = Boolean(navigator.mediaDevices?.getUserMedia && window.RTCPeerConnection);
+  const micOnRef = useRef(true);
 
   async function stop() {
     const current = live.current; live.current = null;
-    current?.stream.getTracks().forEach((track) => track.stop());
+    if (current) { for (const media of [current.stream, current.cam, current.screen, current.mic]) stopMedia(media); current.comp?.stop(); }
     await current?.session?.close();
     if (preview.current) preview.current.srcObject = null;
     setStatus('idle'); setStats(null);
   }
 
+  // PC: make sure the camera/screen needed by `next` are open, and close the ones it does not use.
+  async function acquire(state, next) {
+    if (needsScreen(next) && !state.screen) {
+      const screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false });
+      state.screen = screen; state.comp.setScreen(screen);
+      screen.getVideoTracks()[0]?.addEventListener('ended', () => {
+        if (live.current !== state || state.screen !== screen) return;
+        state.screen = null; state.comp.setScreen(null);
+        if (needsScreen(state.comp.layout)) void switchLayout('camera'); // the browser's "Stop sharing" button
+      });
+    }
+    if (needsCamera(next) && !state.cam) {
+      try {
+        state.cam = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } });
+        state.comp.setCamera(state.cam);
+      } catch (error) { if (next === 'camera') throw error; onError(new Error(t('找不到可用的鏡頭，先只推螢幕畫面。'))); }
+    }
+    state.comp.setLayout(next);
+    if (!needsScreen(next) && state.screen) { stopMedia(state.screen); state.screen = null; state.comp.setScreen(null); }
+    if (!needsCamera(next) && state.cam) { stopMedia(state.cam); state.cam = null; state.comp.setCamera(null); }
+  }
+
+  async function switchLayout(next) {
+    if (!live.current?.comp) { setLayout(next); return; }
+    if (live.current.comp.layout === next) { setLayout(next); return; }
+    setSwitching(true);
+    try { await acquire(live.current, next); setLayout(next); }
+    catch (error) { onError(error.name === 'NotAllowedError' ? new Error(t('已取消分享螢幕，畫面維持不變。')) : error); }
+    finally { setSwitching(false); }
+  }
+
+  function toggleMic() {
+    const next = !micOnRef.current; micOnRef.current = next; setMicOn(next);
+    const current = live.current;
+    for (const media of [current?.mic, current?.stream]) media?.getAudioTracks().forEach((track) => { track.enabled = next; });
+  }
+
   async function start() {
     setStatus('starting');
-    let stream;
+    const state = {};
+    live.current = state;
     try {
-      if (source === 'screen') {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: true });
-        const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).catch(() => null);
-        if (!stream.getAudioTracks().length && mic) mic.getAudioTracks().forEach((track) => stream.addTrack(track));
-      } else {
+      let stream;
+      if (mobile || !canShare) {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: source, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
+        state.stream = stream;
+      } else {
+        state.comp = createCompositor({ placeholder: t('畫面準備中…') });
+        state.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).catch(() => null);
+        if (!state.mic) onError(new Error(t('沒有取得麥克風，這次直播不會有聲音。')));
+        await acquire(state, layout);
+        stream = new MediaStream([state.comp.track, ...(state.mic?.getAudioTracks() || [])]);
       }
-      preview.current.srcObject = stream;
-      live.current = { stream };
+      stream.getAudioTracks().forEach((track) => { track.enabled = micOnRef.current; });
+      if (live.current !== state) throw new DOMException('stopped', 'AbortError');
+      preview.current.srcObject = state.comp ? state.comp.stream : stream;
       const session = await publishWHIP(path, stream);
-      if (!live.current) { await session.close(); return; }
-      live.current.session = session;
+      if (live.current !== state) { await session.close(); return; }
+      state.session = session;
       session.pc.addEventListener('connectionstatechange', () => {
-        const state = session.pc.connectionState;
-        if (state === 'connected') setStatus('live');
-        if (state === 'failed' || state === 'disconnected') { setStatus('failed'); onError(new Error(t('手機／瀏覽器直播連線中斷，請重新開始。'))); }
+        const pcState = session.pc.connectionState;
+        if (pcState === 'connected') setStatus('live');
+        if (pcState === 'failed' || pcState === 'disconnected') { setStatus('failed'); onError(new Error(t('手機／瀏覽器直播連線中斷，請重新開始。'))); }
       });
-      stream.getVideoTracks()[0]?.addEventListener('ended', () => { void stop(); });
+      if (state.stream) state.stream.getVideoTracks()[0]?.addEventListener('ended', () => { void stop(); });
       setStatus(session.pc.connectionState === 'connected' ? 'live' : 'connecting');
     } catch (error) {
-      stream?.getTracks().forEach((track) => track.stop());
-      live.current = null;
+      if (live.current === state) { live.current = null; for (const media of [state.stream, state.cam, state.screen, state.mic]) stopMedia(media); state.comp?.stop(); }
       if (preview.current) preview.current.srcObject = null;
       setStatus('idle');
-      onError(error.name === 'NotAllowedError' ? new Error(t('請允許網站使用相機與麥克風。')) : error);
+      if (error.name !== 'AbortError') onError(error.name === 'NotAllowedError' ? new Error(t('請允許網站使用相機、麥克風或螢幕分享。')) : error);
     }
   }
 
@@ -118,16 +172,18 @@ export default function BrowserBroadcast({ path, t, onError }) {
     <p>{t('不用安裝 OBS：手機或電腦直接用相機推流到你的直播格（WebRTC WHIP）。同一格同時只能有一個來源，若 OBS 正在推流請先停止。')}</p>
     {!supported && <p role="alert">{t('這個瀏覽器不支援相機直播，請使用新版 Chrome 或 Safari，並透過 HTTPS 開啟網站。')}</p>}
     <video ref={preview} className="broadcast-preview" autoPlay muted playsInline hidden={status === 'idle'}/>
+    {canShare
+      ? <div className="layout-switch" role="group" aria-label={t('直播畫面')}>{LAYOUTS.map(([id, icon, name]) => <button key={id} type="button" disabled={switching || status === 'starting'} aria-pressed={layout === id} className={layout === id ? 'on' : ''} onClick={() => { void switchLayout(id); }}>{icon} {t(name)}</button>)}</div>
+      : <div className="duo-controls"><label>{t('來源')} <select value={source} disabled={status !== 'idle'} onChange={(event) => setSource(event.target.value)}>
+          <option value="user">{t('前鏡頭／電腦鏡頭')}</option>
+          <option value="environment">{t('後鏡頭')}</option>
+        </select></label></div>}
     <div className="duo-controls">
-      <label>{t('來源')} <select value={source} disabled={status !== 'idle'} onChange={(event) => setSource(event.target.value)}>
-        <option value="user">{t('前鏡頭／電腦鏡頭')}</option>
-        <option value="environment">{t('後鏡頭')}</option>
-        {canShare && <option value="screen">{t('分享螢幕')}</option>}
-      </select></label>
+      <button type="button" className={`mic-toggle ${micOn ? '' : 'muted'}`} aria-pressed={!micOn} onClick={toggleMic}>{micOn ? `🎤 ${t('關閉麥克風')}` : `🔇 ${t('開啟麥克風')}`}</button>
       {status === 'idle' || status === 'failed'
-        ? <button disabled={!supported} onClick={() => { if (status === 'failed') void stop().then(start); else void start(); }}>{t('開始手機直播')}</button>
-        : <button onClick={() => { void stop(); }}>{t('停止手機直播')}</button>}
+        ? <button disabled={!supported} onClick={() => { if (status === 'failed') void stop().then(start); else void start(); }}>{t(canShare ? '開始瀏覽器直播' : '開始手機直播')}</button>
+        : <button onClick={() => { void stop(); }}>{t(canShare ? '停止瀏覽器直播' : '停止手機直播')}</button>}
     </div>
-    <p role="status">{t('狀態：')}{label}{stats && ` · ${t('已傳送')} ${stats.megabytes} MB · ${stats.kbps} kbps`}{busy && ' …'}</p>
+    <p role="status">{t('狀態：')}{label}{!micOn && ` · 🔇 ${t('麥克風已關閉')}`}{stats && ` · ${t('已傳送')} ${stats.megabytes} MB · ${stats.kbps} kbps`}{(busy || switching) && ' …'}</p>
   </section>;
 }

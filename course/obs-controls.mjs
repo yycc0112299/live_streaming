@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { validOBSAction } from './scripts/obs-actions.mjs';
 export function createOBSControls(io, store, secureTransport) {
   const tickets = new Map(); const controllers = new Map();
   function pathFor(user) {
@@ -49,12 +50,12 @@ export function createOBSControls(io, store, secureTransport) {
       let activeController;
       try {
         const user = account(); const path = pathFor(user);
-        if (!value || !['status', 'microphone', 'camera', 'stop'].includes(value.action) || (['microphone', 'camera'].includes(value.action) && typeof value.enabled !== 'boolean')) throw new Error('無效的 OBS 操作。');
+        if (!validOBSAction(value)) throw new Error('無效的 OBS 操作。');
         const controller = controllers.get(user.id);
         if (!controller?.socket.connected || controller.path !== path) throw new Error('請先連接你這台電腦的 OBS 控制程式。');
         if (controller.busy) throw new Error('上一個 OBS 操作尚未完成。');
         controller.busy = true; activeController = controller;
-        const result = await controller.socket.timeout(7000).emitWithAck('obs:execute', { action: value.action, enabled: value.enabled });
+        const result = await controller.socket.timeout(7000).emitWithAck('obs:execute', { action: value.action, enabled: value.enabled, layout: value.layout });
         if (!result || result.error) throw new Error(result?.error || 'OBS 未回覆狀態。');
         ack(result);
       } catch (error) { ack({ error: error.message || 'OBS 操作逾時，請重新讀取狀態。' }); }

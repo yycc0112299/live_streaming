@@ -327,6 +327,21 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       broadcast(); sendRanks();
       return { ok: true, id: transaction.id, duplicate: Boolean(transaction.duplicate), points: store.user(user.id).points, supportTotal: store.supportTotal(room.state().broadcastId) };
     });
+    // Live captions: the broadcaster's browser recognises their speech and sends the text here;
+    // it is relayed to every viewer under that broadcaster's slot. Restricted words are masked.
+    let captionAt = 0;
+    handle('caption', (value) => {
+      const user = account(); const current = room.state();
+      const path = current.host?.userId === user.id ? 'live' : current.guest?.userId === user.id ? 'guest' : null;
+      if (!path) throw new Error('只有正在上鏡的主播可以送出字幕。');
+      if (!value || typeof value.text !== 'string') throw new Error('字幕格式錯誤。');
+      const final = value.final === true;
+      if (!final && now() - captionAt < 150) return { ok: true, throttled: true };
+      captionAt = now();
+      let text = value.text.replace(/[\p{Cc}\p{Cf}]/gu, ' ').trim().slice(-160);
+      for (const word of store.settings().words) if (word) text = text.split(new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')).join('＊'.repeat([...word].length));
+      io.emit('caption', { path, text, final });
+    });
     handle('health', () => {
       const user = account();
       if (!['admin', 'host'].includes(user.role)) throw new Error('只有主播或管理員可以查看直播健康狀態。');

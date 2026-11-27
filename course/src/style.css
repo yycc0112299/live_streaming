@@ -712,6 +712,9 @@ footer {
 .gift-sound-toggle.on { border-color:#3f7f6d; color:#9ff3d4; }
 .gift-combo { display:inline-block; margin-left:6px; color:#ffe29c; font-size:1.35em; font-style:italic; text-shadow:0 0 12px #ff9a3c; animation:combo-pop .45s ease-out; }
 @keyframes combo-pop { from { transform:scale(2); opacity:.4; } to { transform:scale(1); opacity:1; } }
+.live-caption { position:absolute; left:50%; bottom:40px; transform:translateX(-50%); max-width:92%; z-index:2; padding:4px 12px; border-radius:6px; background:#000000c0; color:#fff; font-size:16px; line-height:1.45; text-align:center; text-shadow:0 1px 2px #000; pointer-events:none; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.cc-toggle { padding:3px 10px; border:1px solid #384457; border-radius:6px; background:#0c121e; color:#9fb0c8; font-size:12px; cursor:pointer; }
+.cc-toggle.on { border-color:#78e1c2; color:#9ff3d4; }
 .health-slots { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; margin:12px 0; }
 .health-slot { padding:12px 14px; border:1px solid #293141; border-radius:12px; background:#0c121e; }
 .health-slot.ok { border-color:#3f7f6d; } .health-slot.warn { border-color:#b8862e; } .health-slot.off { opacity:.75; }

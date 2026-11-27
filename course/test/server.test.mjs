@@ -184,6 +184,21 @@ test('host sees session statistics and can end the session and start a fresh one
   assert.equal((await skipped)[0].id, 'abc');
 });
 
+test('live captions from an on-air broadcaster reach every viewer under that slot, with restricted words masked', async (t) => {
+  const s = await setup(t);
+  const host = await member(t, s, 'HostCaption', 'host'); const fan = await member(t, s, 'FanCaption'); const guest = await member(t, s, 'GuestCaption');
+  s.app.store.db.prepare('UPDATE settings SET words=? WHERE id=1').run(JSON.stringify(['壞話']));
+  assert.ok((await emit(fan.socket, 'caption', { text: '我不是主播', final: true })).error, 'viewers cannot caption');
+  let heard = once(fan.socket, 'caption');
+  assert.equal((await emit(host.socket, 'caption', { text: '大家好，這句有壞話', final: true })).error, undefined);
+  assert.deepEqual((await heard)[0], { path: 'live', text: '大家好，這句有＊＊', final: true });
+  assert.ok((await emit(guest.socket, 'room:join')).ok);
+  heard = once(fan.socket, 'caption');
+  await emit(guest.socket, 'caption', { text: '我是第二路', final: false });
+  assert.equal((await heard)[0].path, 'guest');
+  assert.ok((await emit(host.socket, 'caption', { text: 42 })).error);
+});
+
 test('broadcasters and admins get a stream health report with bitrate, stall and audio warnings', async (t) => {
   const s = await setup(t);
   let clock = 1_000_000; s.app.setClock(() => clock);

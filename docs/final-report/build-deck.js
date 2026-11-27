@@ -1,4 +1,4 @@
-﻿// Builds "Group 9.pptx" — the Capstone final report deck (English, ~10 minutes).
+// Builds "Group 9.pptx" — the Capstone final report deck (English, ~10 minutes).
 // Required topics (TA announcement 2026-11-26): System Architecture, Results and Analysis,
 // Work Distribution, What You Learned, Problems Encountered, Final Platform Screenshot.
 // Run: node build-deck.js   (needs pptxgenjs, react-icons, react, react-dom, sharp)
@@ -293,6 +293,71 @@ async function icon(Comp, color, size = 256) {
   placeholderFrame(s, 2.0, 1.45, 9.33, 5.25, 'Insert demo video here (16:9)', 'PowerPoint: Insert > Video > This Device, then resize to fill this frame', 'Demo video placeholder');
   s.addImage({ data: await icon(fa.FaCirclePlay, HEX.accent2), x: 6.17, y: 2.35, w: 1.0, h: 1.0, objectName: 'Play icon', altText: 'Video placeholder' });
   s.addNotes('Play the recorded demo: host OBS goes live, the phone joins slot two, viewers chat and send a gift. Keep it under two minutes.');
+
+  // 10a–10e · Features not shown in the demo video (screenshots) ---------------
+  const SHOTS = path.join(IMG, 'shots');
+  const fitImage = async (slide, file, x, y, w, h, alt) => {
+    const meta = await sharp(path.join(SHOTS, file)).metadata();
+    const scale = Math.min(w / meta.width, h / meta.height);
+    const iw = meta.width * scale, ih = meta.height * scale;
+    slide.addImage({ path: path.join(SHOTS, file), x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih, altText: alt, objectName: alt });
+  };
+  const notInVideo = (slide) => {
+    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 10.05, y: 0.52, w: 2.65, h: 0.42, rectRadius: 0.21, fill: { color: C.text2 }, line: { color: C.accent4, width: 1 }, objectName: 'Screenshot tag' });
+    text(slide, 'SCREENSHOT · NOT IN VIDEO', { x: 10.05, y: 0.52, w: 2.65, h: 0.42, fontSize: 10, bold: true, color: C.accent4, align: 'center', valign: 'middle', charSpacing: 1 });
+  };
+  // Two screenshots side by side, each with a caption, and a bullet strip underneath.
+  const shotSlide = async (title, left, right, bullets, notes) => {
+    const sl = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'More Features' });
+    sl.addText(title, { placeholder: 'title' });
+    notInVideo(sl);
+    for (const [i, shot] of [left, right].entries()) {
+      const x = 0.6 + i * 6.15, w = shot.w || 5.95;
+      card(sl, x, 1.4, w, 3.95, 'Shot card ' + (i + 1));
+      await fitImage(sl, shot.file, x + 0.15, 1.55, w - 0.3, 3.2, shot.alt);
+      text(sl, shot.caption, { x: x + 0.2, y: 4.85, w: w - 0.4, h: 0.4, fontSize: 13, color: C.background2, align: 'center' });
+    }
+    card(sl, 0.6, 5.55, 12.1, 1.3, 'Explanation card');
+    text(sl, bullets.map((b, i) => ({ text: b, options: { bullet: true, breakLine: i < bullets.length - 1 } })), { x: 0.85, y: 5.65, w: 11.6, h: 1.1, fontSize: 13, color: C.background1, paraSpaceAfter: 3, valign: 'middle' });
+    sl.addNotes(notes);
+    return sl;
+  };
+  pres.addSection({ title: 'More Features' });
+  await shotSlide('Voice messages read by AI voices',
+    { file: 'voice-form.png', alt: 'Voice message form with the voice picker', caption: 'Viewer picks 1 of 9 Azure neural voices and can preview it' },
+    { file: 'voice-overlay.png', alt: 'Voice message on screen with the stop button', caption: 'Message card on the stream · broadcaster can press "Stop reading"' },
+    ['For 25 points a viewer sends a message (max 120 characters) that is read aloud on the stream; normal chat is never read aloud.',
+      'The server synthesizes the MP3 once with Azure AI Speech (free F0 tier, SSML styles such as excited or sports commentary); every viewer hears the same audio and the key never leaves the VM.',
+      'Broadcasters and admins can stop a message for everyone at once.'],
+    'This feature was not in the video, so here are screenshots. Viewers can spend twenty-five points on a voice message. They choose one of nine Azure neural voices and can preview it. The server creates the audio once, so everybody hears the same natural voice, and the Azure key stays on our server. If a message is unwanted, the broadcaster presses Stop reading and it stops for every viewer.');
+  await shotSlide('Browser broadcasting: one-click layouts',
+    { file: 'layout-panel.png', alt: 'Broadcaster panel with camera, screen plus camera and screen buttons', caption: 'Broadcaster panel: Camera · Screen + camera · Screen, and a mic button' },
+    { file: 'layout-both-viewer.png', alt: 'Viewer sees the screen with the camera in the corner', caption: 'What viewers see in slot 2 (test pictures: blue = screen, red = camera)' },
+    ['A PC broadcaster can stream from the web page without OBS and switch between camera only, screen + camera (picture-in-picture) and screen only while live.',
+      'The browser composes a fixed 1280×720 picture, so switching never reconnects or changes the resolution; only the sources in use are opened.',
+      'The microphone can be muted and unmuted in one click; phones get the same mic button.'],
+    'Also not in the video: broadcasting from a computer browser. The broadcaster switches between camera, screen plus camera, and screen with one click. The browser draws everything into one 1280 by 720 picture before sending it with WebRTC, so the stream does not reconnect when the layout changes. The right picture is what viewers see; the blue and red frames are test pictures standing in for slides and a webcam.');
+  await shotSlide('Reliability: leave slot, auto-reconnect',
+    { file: 'slot2-joined.png', alt: 'Second slot countdown and leave button', caption: 'Idle countdown and the "Leave the second slot" button' },
+    { file: 'reconnecting.png', alt: 'Broadcast panel reconnecting automatically', caption: 'Network lost → reconnecting automatically (1/12)' },
+    ['Whoever takes slot 2 can leave at once; if nobody streams for 3 minutes, the server frees the slot automatically (never during a media-server outage).',
+      'If the phone or PC loses its connection (Wi-Fi ↔ 4G, weak signal), the page republishes the same camera and mic by itself, waiting 1, 2, 4, 8 then 15 s, up to 12 times.',
+      'When the device is back online it retries immediately, so the broadcaster does not have to press Start again.'],
+    'Two reliability features that are hard to show in a short video. First, the second slot cannot be blocked: the broadcaster can leave with one click, and an idle slot is released after three minutes. Second, when a phone switches between Wi-Fi and 4G, the broadcast reconnects by itself with back-off, and immediately when the network returns.');
+  await shotSlide('Admin tools: moderation and health',
+    { file: 'admin-moderation.png', alt: 'Chat moderation panel', caption: 'Pinned notice, slow mode, banned words, mutes and reports' },
+    { file: 'admin-health.png', alt: 'Stream health panel', caption: 'Live health of both slots, refreshed every 3 seconds' },
+    ['Admins set the pinned announcement, slow mode, voice-message interval and banned words; they handle reports, delete messages and mute users, and every action is written to an audit log.',
+      'The health panel shows each slot\'s source (OBS RTMPS or browser WebRTC), upload bitrate, data received, tracks, readers and uptime, plus VM memory and CPU load.',
+      'It warns in plain words: picture may be frozen, low bitrate, or no audio track. (Screenshots from our local test copy with demo data.)'],
+    'These are the admin tools. On the left, chat moderation: announcement, slow mode, banned words, reports, mutes and deletions, all audited. On the right, the stream health panel, which we added after a real problem: when the picture stuttered, we wanted to see the bitrate of each slot immediately. It refreshes every three seconds and warns in plain language. These two screenshots come from our local test copy with demo data.');
+  await shotSlide('Session stats, ledger and English UI',
+    { file: 'admin-restart.png', alt: 'Session statistics with the previous session', caption: 'Session stats · "End session & start a new one" keeps the previous summary' },
+    { file: 'ledger.png', alt: 'Points ledger of a viewer', caption: 'Each viewer\'s points ledger with transaction IDs' },
+    ['Hosts see duration, peak connections, likes, chat messages, gifts, points, supporters and voice messages; ending a session resets the leaderboard and keeps the previous summary.',
+      'Every gift is a SQLite transaction with a unique request ID, so a retried request is never charged twice; viewers see their own ledger, admins see everything.',
+      'The whole interface switches between Chinese and English with one click (top bar).'],
+    'Finally, session statistics and the ledger. The host sees the numbers of the current show and can end it and start a new one; the previous summary stays on screen, which gave us the figures for our results. Every gift is a database transaction with a unique request ID, so nobody is charged twice. And the whole interface can switch to English.');
 
   // 11 · Photos placeholder --------------------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Final Platform Screenshot' });

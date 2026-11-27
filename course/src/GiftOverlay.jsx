@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GIFTS } from '../gifts.mjs';
+import { playGiftSound, unlockGiftSound } from './giftSound.js';
 function GiftArt({ gift }) {
   if (gift.kind === 'heart') return <svg viewBox="0 0 240 220" aria-hidden="true"><path d="M120 205C103 181 30 139 30 78C30 22 99 12 120 58C141 12 210 22 210 78C210 139 137 181 120 205Z" fill="#ff4d88" stroke="#ffd4e3" strokeWidth="7"/><path d="M66 63Q87 39 105 66" fill="none" stroke="#fff" strokeWidth="10" strokeLinecap="round" opacity=".75"/></svg>;
   if (gift.kind === 'rose') return <svg viewBox="0 0 240 300" aria-hidden="true"><path d="M123 133Q117 220 126 287" fill="none" stroke="#45ba70" strokeWidth="13" strokeLinecap="round"/><path d="M121 220Q80 175 51 209Q81 246 124 244M124 190Q160 147 194 174Q169 216 124 216" fill="#57cf7c" stroke="#b8ffd0" strokeWidth="4"/><g fill="#f34973" stroke="#ffd1dc" strokeWidth="4"><ellipse cx="120" cy="88" rx="70" ry="54"/><ellipse cx="84" cy="75" rx="39" ry="49" transform="rotate(-35 84 75)"/><ellipse cx="156" cy="75" rx="39" ry="49" transform="rotate(35 156 75)"/><ellipse cx="120" cy="60" rx="36" ry="51"/></g><path d="M92 85Q120 122 148 85Q120 54 92 85" fill="#a90e46"/></svg>;
@@ -21,8 +22,10 @@ export default function GiftOverlay({ gifts, onDone, t }) {
   const gift = GIFTS.find((item) => item.amount === current?.amount);
   const canvas = useRef(null);
   const [mode, setMode] = useState(prefers3D() ? '3d' : '2d');
+  useEffect(() => { unlockGiftSound(); }, []);
   useEffect(() => {
     if (!gift) return;
+    playGiftSound(gift.kind);
     const timer = setTimeout(onDone, gift.duration);
     return () => clearTimeout(timer);
   }, [current?.id]);

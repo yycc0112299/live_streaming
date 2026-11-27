@@ -66,6 +66,7 @@ export const english = {
   '加入第二路直播': 'Join the second stream', '加入直播': 'Join live',
   '任何已登入的主播都可以直接占用第二路，不需要第一位主播同意。': 'A signed-in broadcaster can join the second stream directly.',
   '加入中…': 'Joining…', '直接加入第二路': 'Join the second stream',
+  '禮物音效：開（小聲）': 'Gift sounds: on (quiet)', '禮物音效：關': 'Gift sounds: off',
   '加入後 3 分鐘內沒有開始推流，會自動讓出第二路。': ' If you do not start streaming within 3 minutes, the slot is released automatically.',
   '第二路尚未推流，': 'Your second stream is not live yet; the slot is released in ', '秒後會自動讓出位置給其他人。': ' s so others can join.',
   '第二位主播申請': 'Second broadcaster requests', '同意加入': 'Approve',

@@ -48,6 +48,8 @@ export async function publishWHIP(path, stream) {
   return { pc, close: async () => { pc.close(); await fetch(session, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {}); } };
 }
 
+export const MAX_RETRIES = 12;
+export const retryDelay = (attempt) => Math.min(15000, 1000 * 2 ** Math.max(0, attempt - 1));
 const stopMedia = (media) => media?.getTracks().forEach((track) => track.stop());
 
 export default function BrowserBroadcast({ path, t, onError }) {
@@ -60,12 +62,53 @@ export default function BrowserBroadcast({ path, t, onError }) {
   const [switching, setSwitching] = useState(false);
   const [status, setStatus] = useState('idle');
   const [stats, setStats] = useState(null);
+  const [retry, setRetry] = useState(0);
   const canShare = Boolean(navigator.mediaDevices?.getDisplayMedia) && !mobile;
   const supported = Boolean(navigator.mediaDevices?.getUserMedia && window.RTCPeerConnection);
   const micOnRef = useRef(true);
 
+  // Publishes state.publishStream; on network loss (Wi-Fi <-> 4G, tunnel, weak signal) it
+  // reconnects by itself with back-off, reusing the same camera/mic tracks.
+  async function connect(state) {
+    const session = await publishWHIP(path, state.publishStream);
+    if (live.current !== state) { await session.close(); return; }
+    state.session = session;
+    session.pc.addEventListener('connectionstatechange', () => {
+      if (live.current !== state || state.session !== session) return;
+      const pcState = session.pc.connectionState;
+      if (pcState === 'connected') { state.attempt = 0; setRetry(0); setStatus('live'); }
+      if (pcState === 'failed') scheduleReconnect(state);
+      if (pcState === 'disconnected') {
+        clearTimeout(state.disconnectTimer);
+        state.disconnectTimer = setTimeout(() => { if (state.session === session && session.pc.connectionState === 'disconnected') scheduleReconnect(state); }, 4000);
+      }
+    });
+    setStatus(session.pc.connectionState === 'connected' ? 'live' : 'connecting');
+  }
+  function scheduleReconnect(state) {
+    if (live.current !== state || state.retryTimer) return;
+    const old = state.session; state.session = null; void old?.close();
+    state.attempt = (state.attempt || 0) + 1; setRetry(state.attempt);
+    if (state.attempt > MAX_RETRIES) { setStatus('failed'); onError(new Error(t('手機／瀏覽器直播連線中斷，請重新開始。'))); return; }
+    setStatus('reconnecting');
+    state.retryTimer = setTimeout(() => runRetry(state), retryDelay(state.attempt));
+  }
+  function runRetry(state) {
+    clearTimeout(state.retryTimer); state.retryTimer = null;
+    if (live.current !== state) return;
+    connect(state).catch(() => scheduleReconnect(state));
+  }
+  // Back online: retry now instead of waiting for the back-off timer.
+  useEffect(() => {
+    const online = () => { const state = live.current; if (state?.retryTimer) runRetry(state); };
+    window.addEventListener('online', online);
+    return () => window.removeEventListener('online', online);
+  }, []);
+
   async function stop() {
     const current = live.current; live.current = null;
+    if (current) { clearTimeout(current.retryTimer); clearTimeout(current.disconnectTimer); }
+    setRetry(0);
     if (current) { for (const media of [current.stream, current.cam, current.screen, current.mic]) stopMedia(media); current.comp?.stop(); }
     await current?.session?.close();
     if (preview.current) preview.current.srcObject = null;
@@ -131,16 +174,9 @@ export default function BrowserBroadcast({ path, t, onError }) {
       stream.getAudioTracks().forEach((track) => { track.enabled = micOnRef.current; });
       if (live.current !== state) throw new DOMException('stopped', 'AbortError');
       preview.current.srcObject = state.comp ? state.comp.stream : stream;
-      const session = await publishWHIP(path, stream);
-      if (live.current !== state) { await session.close(); return; }
-      state.session = session;
-      session.pc.addEventListener('connectionstatechange', () => {
-        const pcState = session.pc.connectionState;
-        if (pcState === 'connected') setStatus('live');
-        if (pcState === 'failed' || pcState === 'disconnected') { setStatus('failed'); onError(new Error(t('手機／瀏覽器直播連線中斷，請重新開始。'))); }
-      });
+      state.publishStream = stream;
+      await connect(state);
       if (state.stream) state.stream.getVideoTracks()[0]?.addEventListener('ended', () => { void stop(); });
-      setStatus(session.pc.connectionState === 'connected' ? 'live' : 'connecting');
     } catch (error) {
       if (live.current === state) { live.current = null; for (const media of [state.stream, state.cam, state.screen, state.mic]) stopMedia(media); state.comp?.stop(); }
       if (preview.current) preview.current.srcObject = null;
@@ -166,7 +202,7 @@ export default function BrowserBroadcast({ path, t, onError }) {
   useEffect(() => () => { void stop(); }, []);
 
   const busy = status === 'starting' || status === 'connecting';
-  const label = { idle: t('未開播'), starting: t('開啟相機中…'), connecting: t('連線中…'), live: 'LIVE', failed: t('連線失敗') }[status];
+  const label = { idle: t('未開播'), starting: t('開啟相機中…'), connecting: t('連線中…'), live: 'LIVE', failed: t('連線失敗'), reconnecting: `${t('網路中斷，自動重新連線中')}（${retry}/${MAX_RETRIES}）` }[status];
   return <section className="management browser-broadcast" aria-label={t('手機／瀏覽器直播')}>
     <h2>{t('手機／瀏覽器直播')} · {path === 'live' ? t('第一格') : t('第二格')}</h2>
     <p>{t('不用安裝 OBS：手機或電腦直接用相機推流到你的直播格（WebRTC WHIP）。同一格同時只能有一個來源，若 OBS 正在推流請先停止。')}</p>

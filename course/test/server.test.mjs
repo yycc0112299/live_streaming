@@ -184,6 +184,22 @@ test('host sees session statistics and can end the session and start a fresh one
   assert.equal((await skipped)[0].id, 'abc');
 });
 
+test('broadcasters and admins get a stream health report with bitrate, stall and audio warnings', async (t) => {
+  const s = await setup(t);
+  let clock = 1_000_000; s.app.setClock(() => clock);
+  const host = await member(t, s, 'HostHealth', 'host'); const fan = await member(t, s, 'FanHealth');
+  assert.ok((await emit(fan.socket, 'health')).error, 'viewers cannot read health');
+  s.live(true); await s.app.poll(); clock += 2000; await s.app.poll();
+  const report = await emit(host.socket, 'health');
+  assert.equal(report.slots.length, 2);
+  const live = report.slots.find((slot) => slot.path === 'live');
+  assert.equal(live.live, true); assert.equal(live.broadcaster, 'HostHealth');
+  assert.ok(live.warnings.some((w) => /凍結/.test(w)), 'no new bytes between polls is reported as a possible freeze');
+  assert.ok(live.warnings.some((w) => /聲音軌/.test(w)), 'missing audio track is reported');
+  assert.equal(report.slots.find((slot) => slot.path === 'guest').live, false);
+  assert.ok(report.viewers >= 2); assert.ok(report.server.cpus >= 1);
+});
+
 test('each signed-in viewer receives their own leaderboard rank right after any gift', async (t) => {
   const s = await setup(t);
   await member(t, s, 'HostRank', 'host');

@@ -712,6 +712,12 @@ footer {
 .gift-sound-toggle.on { border-color:#3f7f6d; color:#9ff3d4; }
 .gift-combo { display:inline-block; margin-left:6px; color:#ffe29c; font-size:1.35em; font-style:italic; text-shadow:0 0 12px #ff9a3c; animation:combo-pop .45s ease-out; }
 @keyframes combo-pop { from { transform:scale(2); opacity:.4; } to { transform:scale(1); opacity:1; } }
+.health-slots { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; margin:12px 0; }
+.health-slot { padding:12px 14px; border:1px solid #293141; border-radius:12px; background:#0c121e; }
+.health-slot.ok { border-color:#3f7f6d; } .health-slot.warn { border-color:#b8862e; } .health-slot.off { opacity:.75; }
+.health-slot dl { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:10px 0 6px; font-size:13px; }
+.health-slot dt { color:#9fb0c8; } .health-slot dd { margin:0; color:#e8edf7; }
+.health-warning { margin:4px 0 0; color:#f5d98b; font-size:13px; } .health-good { margin:4px 0 0; color:#9ff3d4; font-size:13px; }
 .stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin:10px 0; }
 .stats-grid div { display:flex; flex-direction:column; gap:4px; padding:10px 12px; border:1px solid #293141; border-radius:10px; background:#0c121e; }
 .stats-grid span { font-size:12px; color:#9fb0c8; }

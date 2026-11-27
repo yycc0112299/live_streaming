@@ -6,6 +6,7 @@ import { giftSoundEnabled, setGiftSoundEnabled } from './giftSound.js';
 import { speak } from './speech.js';
 import { VOICES, DEFAULT_VOICE } from '../voices.mjs';
 import SessionStats from './SessionStats.jsx';
+import HealthPanel from './HealthPanel.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Hls from 'hls.js';
@@ -253,6 +254,7 @@ function App() {
         {room.host?.userId === user?.id && roomRequests.length > 0 && <section className="management" aria-label={t('第二位主播申請')}><h2>{t('第二位主播申請')}</h2>{roomRequests.map((request) => <div key={request.userId}><span>{request.nickname}</span> <button disabled={roomBusy} onClick={() => roomAction('room:approve', request.userId)}>{t('同意加入')}</button></div>)}</section>}
         {management && !liveNow && <section className="management" aria-label={t('直播未開始')}><h2>{t('等待直播畫面')}</h2><p>{t('任一路 OBS 出現直播畫面後，觀眾即可送禮物與點數語音留言。')}</p></section>}
         {management && room.host && !room.guest && room.host.userId !== user.id && <section className="management" aria-label={t('第二位主播加入')}><h2>{t('第二位主播加入')}</h2><p>{t('在第二台電腦完成 OBS 與 AEC 設定後，按一下即可占用第二路；第一位主播不用操作。')}</p><button disabled={roomBusy} onClick={() => roomAction('room:join')}>{t('以第二位主播加入')}</button></section>}
+        {management && <HealthPanel command={command} t={t}/>}
         {user && room.host && (room.host.userId === user.id || user.role === 'admin') && <SessionStats command={command} onError={onError} t={t} broadcastId={room.broadcastId}/>}
         {management && <section className="management" aria-label={t('抖內控制')}><h2>{t('抖內控制')}</h2><p>{room.host ? `${t('本場主持人：')}${room.host.nickname} · ${t('第二位：')}${room.guest?.nickname || t('等待自行加入')}` : t('目前沒有直播主加入直播間。')}</p><button disabled={roomBusy || user.role !== 'admin'} onClick={() => roomAction('room:donations', !room.donationsEnabled)}>{t(room.donationsEnabled ? '關閉抖內' : '重新開啟抖內')}</button><p className="muted">{t('管理員可隨時開關；主播建立直播間時會自動開啟。')}</p></section>}
       </section>

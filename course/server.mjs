@@ -11,6 +11,7 @@ import { openStore } from './store.mjs';
 import { createOBSRoom } from './room.mjs';
 import { publishCredentials } from './scripts/media-config.mjs';
 import { createTTS } from './tts.mjs';
+import os from 'node:os';
 
 const dist = fileURLToPath(new URL('./dist/', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
@@ -28,6 +29,29 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   let status = { live: false, available: false, sources: { live: { live: false, available: false }, guest: { live: false, available: false } } };
   let polling;
   let looseLikes = 0; // likes while no session is open
+  // Stream health for the admin panel, sampled on every MediaMTX poll.
+  const media = { live: null, guest: null };
+  function noteMedia(name, info) {
+    const at = now(); const bytes = Number(info.bytesReceived ?? info.inboundBytes ?? 0); const prev = media[name];
+    const kbps = prev && info.ready && prev.ready && at > prev.at && bytes >= prev.bytes ? Math.round(((bytes - prev.bytes) * 8) / (at - prev.at)) : 0;
+    const stalled = Boolean(info.ready && prev?.ready && bytes === prev.bytes);
+    media[name] = { at, bytes, kbps, stalled, ready: info.ready === true, source: info.source?.type || null, tracks: info.tracks || [], readers: (info.readers || []).length, readySince: info.readyTime || null };
+  }
+  function health() {
+    const viewers = [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length;
+    const current = room.state();
+    const slots = ['live', 'guest'].map((path) => {
+      const m = media[path]; const owner = path === 'live' ? current.host : current.guest;
+      const warnings = [];
+      if (!m) warnings.push('媒體伺服器沒有回應');
+      else if (m.ready && m.stalled) warnings.push('收不到新資料，畫面可能凍結');
+      else if (m.ready && m.kbps > 0 && m.kbps < 300) warnings.push('上傳碼率偏低，畫面可能模糊或卡頓');
+      if (m && m.ready && !m.tracks.some((track) => /audio|aac|opus|mpeg-4 audio/i.test(String(track)))) warnings.push('這一路沒有聲音軌');
+      return { path, broadcaster: owner?.nickname || null, live: Boolean(m?.ready), source: m?.source || null, tracks: m?.tracks || [], kbps: m?.kbps || 0, megabytes: m ? +(m.bytes / 1048576).toFixed(1) : 0, readers: m?.readers || 0, uptimeSeconds: m?.readySince ? Math.max(0, Math.round((now() - Date.parse(m.readySince)) / 1000)) : 0, warnings };
+    });
+    const memory = process.memoryUsage();
+    return { at: new Date(now()).toISOString(), viewers, slots, server: { uptimeSeconds: Math.round(process.uptime()), memoryMB: Math.round(memory.rss / 1048576), load: os.loadavg().map((value) => +value.toFixed(2)), cpus: os.cpus().length, tts: tts.enabled } };
+  }
   // Second slot: a joined guest who has not published for guestIdleMs is released so others can join.
   let guestIdle = null;
   let authActive = 0;
@@ -228,10 +252,12 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       const paths = await Promise.all(['live', 'guest'].map(async (name) => {
         try {
           const response = await fetch(`${apiUrl}/v3/paths/get/${name}`, { signal: AbortSignal.timeout(3000) });
-          if (response.status === 404) return [name, { live: false, available: true }];
+          if (response.status === 404) { noteMedia(name, { ready: false }); return [name, { live: false, available: true }]; }
           if (!response.ok) throw new Error('Media API unavailable');
-          return [name, { live: (await response.json()).ready === true, available: true }];
-        } catch { return [name, { live: false, available: false }]; }
+          const info = await response.json();
+          noteMedia(name, info);
+          return [name, { live: info.ready === true, available: true }];
+        } catch { media[name] = null; return [name, { live: false, available: false }]; }
       }));
       const sources = Object.fromEntries(paths);
       status = { ...sources.live, sources };
@@ -300,6 +326,11 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       if (!transaction.duplicate) io.emit('donation', { id: transaction.id, amount: transaction.amount, nickname: user.nickname, message: transaction.message, audio: transaction.message ? tts.prepare(transaction.id, transaction.message, typeof value?.voice === 'string' ? value.voice : '') : false });
       broadcast(); sendRanks();
       return { ok: true, id: transaction.id, duplicate: Boolean(transaction.duplicate), points: store.user(user.id).points, supportTotal: store.supportTotal(room.state().broadcastId) };
+    });
+    handle('health', () => {
+      const user = account();
+      if (!['admin', 'host'].includes(user.role)) throw new Error('只有主播或管理員可以查看直播健康狀態。');
+      return { ok: true, ...health() };
     });
     // A broadcaster or admin stops the voice message being read aloud, for every viewer at once.
     handle('voice:skip', (id) => {

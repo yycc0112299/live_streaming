@@ -289,4 +289,5 @@ OBS WebSocket 讀回 outputActive=true、輸出位元組持續增加；Chrome �
 - 參考：WebGL／Three.js 播放禮物特效（Qixiu PC Web 案例），以及禮物事件經即時 socket 送達、依序排隊播放的做法。
 - 新增「本場應援榜」（參考 YouTube Live 的熱門粉絲排行榜）：依目前場次的禮物總點數排名，最多 5 名，只公開暱稱、點數與次數，不公開帳號 ID。送禮後隨 `state` 事件即時更新；新的一場從空白開始。
 - 驗證：`npm test` 30/30（新增應援榜排序、隱私與換場測試）。正式建置通過，`gift3d` 為獨立 chunk。開發預覽頁 `gift-preview.html` 逐一確認六種 3D 模型都能渲染。本機完整 App（暫存資料庫、管理員開啟應援）中，以訪客送出 25 點跑車：3D canvas 出現在播放器上方、說明文字正確、應援榜即時顯示第 1 名。
-- 尚未部署：VM 依使用者要求已關機（deallocated）。下次開機時依 `PHONE_BROADCAST.md` 的「部署到 Azure VM」步驟部署，並記得把 `dist/assets/*`（含 `gift3d-*.js`）複製到 `/var/www/html/group9/assets/`。
+- 已部署並在公開網站實測（2026-11-27）：開機 VM，以 Run Command 從 GitHub 取 `9fcc633` 部署到 `releases/phone-9fcc633-web-v15`，VM 上 `npm test` 30/30。正式建置的 `index-*.js`、`index-*.css`、`gift3d-*.js` 都已複製到 Apache 靜態目錄，公開網址回 200；未登入的 WHIP 仍回 401。第一路 OBS（Group9 Local／NVENC）經 RTMPS 推流：MediaMTX `live ready source=rtmpsConn`，約 1.6 Mbps、0 掉格，公開頁播放 1280×720。在公開網站以訪客送出 25 點跑車：3D 跑車（WebGL canvas 918×498）疊在直播畫面上，說明文字正確，本場應援總點數 4070 → 4095，應援榜正常顯示。測完已停止 OBS，VM 再次 deallocated。
+- 提醒：目前這一場的應援榜前幾名有不當暱稱，正式截圖或報告前請以管理員換新的一場或處理該帳號。

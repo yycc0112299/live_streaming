@@ -74,7 +74,7 @@ function Player({ live, path = 'live', name, silent = false, t }) {
   return <div className="player">
     <video ref={video} controls={false} autoPlay muted={silent || muted} playsInline aria-label={`${name}${t('的 OBS 直播')}`} hidden={!live}/>
     <span className="source-name">{name} · {live ? 'LIVE' : 'OFFLINE'}{silent && ` · ${t('自己返聽已關閉')}`}</span>
-    {live && !silent && <button type="button" onClick={() => setMuted((value) => !value)}>{muted ? `${t('播放聲音')} · ${name}` : `${t('關閉聲音')} · ${name}`}</button>}
+    {live && !silent && <button type="button" className={`audio-toggle ${muted ? '' : 'on'}`} aria-label={`${muted ? t('播放聲音') : t('關閉聲音')} · ${name}`} onClick={() => setMuted((value) => !value)}>{muted ? `🔈 ${t('播放聲音')}` : `🔊 ${t('關閉聲音')}`}</button>}
     {!live && <div className="offline"><span className="signal">◉</span><h2>{name}{t('尚未推流')}</h2><p>{t('連線恢復後會自動播放。')}</p></div>}
     {error && <div role="status" className="video-error">{t(error)}<button onClick={() => retry((n) => n + 1)}>{t('重試播放')}</button></div>}
   </div>;

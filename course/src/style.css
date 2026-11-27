@@ -667,7 +667,9 @@ footer {
 }
 .duo-section { padding:48px 16px 16px; }
 .duo-section h2 { font-size:18px; margin:0; }
-.source-name { position:absolute; bottom:4px; left:6px; background:#101924e8; padding:2px 6px; font-size:12px; }
+.source-name { position:absolute; bottom:6px; left:6px; max-width:calc(100% - 120px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:#101924e8; padding:3px 8px; border-radius:6px; font-size:12px; line-height:1.4; z-index:2; }
+.player > .audio-toggle { position:absolute; right:6px; bottom:6px; z-index:2; margin:0; padding:3px 10px; border:1px solid #384457; border-radius:999px; background:#101924e8; color:#c7d2e3; font-size:12px; line-height:1.4; cursor:pointer; white-space:nowrap; }
+.player > .audio-toggle.on { border-color:#3f7f6d; color:#9ff3d4; }
 .duo-grid .player { aspect-ratio:4/3; min-width:0; }
 .duo-grid .offline { padding:12px; }
 .duo-grid .offline h2 { font-size:15px; }

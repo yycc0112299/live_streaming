@@ -7,7 +7,7 @@ export default function Account({ user, available, onChange, command, onError, s
   const ledgerRequest = useRef(0);
   const [loadingLedger, setLoadingLedger] = useState(false);
   async function loadLedger(before = null) {
-    if (user?.role === 'viewer') return;
+    // Viewers see only their own gifts (the server limits them to scope 'own'); admins see all.
     const request = ++ledgerRequest.current;
     setLoadingLedger(true);
     try {

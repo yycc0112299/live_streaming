@@ -737,7 +737,8 @@ button.danger { border-color:#8a3b4c; background:#2a1018; color:#ffb3c2; }
 .mic-toggle.muted { border-color:#8a3b4c; background:#2a1018; color:#ffb3c2; }
 .guest-idle-notice { margin:16px 0 0; padding:10px 14px; border:1px solid #6b5a2a; border-radius:12px; background:#221d10; color:#f5d98b; font-size:14px; }
 .browser-broadcast select { border:1px solid #384457; padding:6px; border-radius:6px; background:#0c121e; color:#e8edf7; }
-.broadcast-preview { display:block; width:100%; max-width:420px; aspect-ratio:16/9; object-fit:cover; background:#000; border-radius:10px; transform:scaleX(-1); }
+.broadcast-preview { display:block; width:100%; max-width:420px; aspect-ratio:16/9; object-fit:cover; background:#000; border-radius:10px; }
+.broadcast-preview.mirror { transform:scaleX(-1); }
 .browser-broadcast button { min-height:40px; }
 @media(max-width:480px) { .duo-grid { grid-template-columns:1fr; } .account-form { flex-direction:column; align-items:stretch; } }
 @media(max-width:900px) { .gift-options { grid-template-columns:repeat(3,1fr); } }

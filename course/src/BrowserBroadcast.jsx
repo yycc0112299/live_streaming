@@ -207,7 +207,8 @@ export default function BrowserBroadcast({ path, t, onError }) {
     <h2>{t('手機／瀏覽器直播')} · {path === 'live' ? t('第一格') : t('第二格')}</h2>
     <p>{t('不用安裝 OBS：手機或電腦直接用相機推流到你的直播格（WebRTC WHIP）。同一格同時只能有一個來源，若 OBS 正在推流請先停止。')}</p>
     {!supported && <p role="alert">{t('這個瀏覽器不支援相機直播，請使用新版 Chrome 或 Safari，並透過 HTTPS 開啟網站。')}</p>}
-    <video ref={preview} className="broadcast-preview" autoPlay muted playsInline hidden={status === 'idle'}/>
+    {/* Mirror only a phone's front camera (a selfie view); screen and PC compositions stay readable. */}
+    <video ref={preview} className={`broadcast-preview ${!canShare && source === 'user' ? 'mirror' : ''}`} autoPlay muted playsInline hidden={status === 'idle'}/>
     {canShare
       ? <div className="layout-switch" role="group" aria-label={t('直播畫面')}>{LAYOUTS.map(([id, icon, name]) => <button key={id} type="button" disabled={switching || status === 'starting'} aria-pressed={layout === id} className={layout === id ? 'on' : ''} onClick={() => { void switchLayout(id); }}>{icon} {t(name)}</button>)}</div>
       : <div className="duo-controls"><label>{t('來源')} <select value={source} disabled={status !== 'idle'} onChange={(event) => setSource(event.target.value)}>

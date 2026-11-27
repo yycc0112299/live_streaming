@@ -1,6 +1,7 @@
 // Both fixed OBS computers publish to MediaMTX; this module controls their one shared room.
-export function createOBSRoom(io, store) {
+export function createOBSRoom(io, store, onChange) {
   const requests = new Map();
+  let lastEnded = null;
   const state = () => { const current = store.room(); if (current.donationsEnabled && !current.host) store.ensureDonationRoom(); return store.room(); };
   const notify = () => io.emit('room:state', state());
   const pending = () => [...requests.values()];
@@ -42,6 +43,34 @@ export function createOBSRoom(io, store) {
       if (typeof ack !== 'function') return;
       try { const account = store.session(socket.data.token); if (!account) throw new Error('請先登入才能加入直播。'); store.join(account.id); notify(); ack({ ok: true, ...state() }); }
       catch (error) { ack({ error: error.message }); }
+    });
+    // Host or admin: statistics of the current session, and "end this session, start a new one".
+    const owner = () => {
+      const account = store.session(socket.data.token); const room = state();
+      if (!account || !room.host || (room.host.userId !== account.id && account.role !== 'admin')) throw new Error('只有本場主持人或管理員可以操作場次。');
+      return { account, room };
+    };
+    socket.on('room:stats', (ack) => {
+      if (typeof ack !== 'function') return;
+      try { const { room } = owner(); ack({ ok: true, current: store.summary(room.broadcastId), previous: lastEnded ? store.summary(lastEnded) : null }); }
+      catch (error) { ack({ error: error.message }); }
+    });
+    socket.on('room:restart', (ack) => {
+      if (typeof ack !== 'function') return;
+      try {
+        owner(); const { ended } = store.restart(); lastEnded = ended;
+        requests.clear(); notifyRequests(); notify(); onChange?.();
+        ack({ ok: true, previous: store.summary(ended), current: store.summary(state().broadcastId) });
+      } catch (error) { ack({ error: error.message }); }
+    });
+    // The second broadcaster can leave the slot at once instead of waiting for the idle release.
+    socket.on('room:leave', (ack) => {
+      if (typeof ack !== 'function') return;
+      try {
+        const account = store.session(socket.data.token); const room = state();
+        if (!account || room.guest?.userId !== account.id) throw new Error('你目前不在第二路。');
+        store.releaseGuest(room.broadcastId, account.id); notify(); onChange?.(); ack({ ok: true });
+      } catch (error) { ack({ error: error.message }); }
     });
     socket.on('room:donations', (enabled, ack) => {
       if (typeof ack !== 'function') return;

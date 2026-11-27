@@ -25,9 +25,9 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     }
     return '';
   }
-  let likes = 0;
   let status = { live: false, available: false, sources: { live: { live: false, available: false }, guest: { live: false, available: false } } };
   let polling;
+  let looseLikes = 0; // likes while no session is open
   // Second slot: a joined guest who has not published for guestIdleMs is released so others can join.
   let guestIdle = null;
   let authActive = 0;
@@ -204,9 +204,9 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       done(null, sameOrigin(req) && io.engine.clientsCount < 100);
     },
   });
-  const room = createOBSRoom(io, store);
+  const room = createOBSRoom(io, store, () => { broadcast(); sendRanks(); });
   const obsControls = createOBSControls(io, store, secureTransport);
-  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), neuralVoices: tts.enabled, guestIdleLeft: guestIdle && currentRoom.guest?.userId === guestIdle.userId ? Math.max(0, Math.ceil((guestIdle.since + guestIdleMs - now()) / 1000)) : null, room: currentRoom }; }
+  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes: currentRoom.broadcastId ? store.likes(currentRoom.broadcastId) : looseLikes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), neuralVoices: tts.enabled, guestIdleLeft: guestIdle && currentRoom.guest?.userId === guestIdle.userId ? Math.max(0, Math.ceil((guestIdle.since + guestIdleMs - now()) / 1000)) : null, room: currentRoom }; }
   function broadcast() { io.emit('state', snapshot()); }
   function sendRanks(only) {
     const id = room.state().broadcastId;
@@ -236,7 +236,11 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       const sources = Object.fromEntries(paths);
       status = { ...sources.live, sources };
     } catch { status = { live: false, available: false }; }
-    finally { try { releaseIdleGuest(); } catch {} polling = undefined; broadcast(); }
+    finally {
+      try { releaseIdleGuest(); } catch {}
+      try { store.notePeak(room.state().broadcastId, [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length); } catch {}
+      polling = undefined; broadcast();
+    }
     })();
     return polling;
   }
@@ -282,7 +286,8 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     handle('like', () => {
       if (Date.now() - likeAt < 500) throw new Error('請稍候再按讚。');
       likeAt = Date.now();
-      likes++;
+      const id = room.state().broadcastId;
+      const likes = id ? store.addLike(id) : ++looseLikes; // likes belong to the current session
       io.emit('like', { likes });
     });
     handle('donate', (value) => {
@@ -295,6 +300,12 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       if (!transaction.duplicate) io.emit('donation', { id: transaction.id, amount: transaction.amount, nickname: user.nickname, message: transaction.message, audio: transaction.message ? tts.prepare(transaction.id, transaction.message, typeof value?.voice === 'string' ? value.voice : '') : false });
       broadcast(); sendRanks();
       return { ok: true, id: transaction.id, duplicate: Boolean(transaction.duplicate), points: store.user(user.id).points, supportTotal: store.supportTotal(room.state().broadcastId) };
+    });
+    // A broadcaster or admin stops the voice message being read aloud, for every viewer at once.
+    handle('voice:skip', (id) => {
+      const user = account(); const current = room.state();
+      if (user.role !== 'admin' && current.host?.userId !== user.id && current.guest?.userId !== user.id) throw new Error('只有主播或管理員可以停止朗讀。');
+      io.emit('voice:skip', { id: typeof id === 'string' ? id.slice(0, 64) : null });
     });
     handle('ledger', (before = null) => store.ledger(account(), before));
     handle('ledger:delete', (id) => {

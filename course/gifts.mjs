@@ -10,4 +10,10 @@ export const GIFTS = [
 export const VOICE_MESSAGE_POINTS = 25;
 export const FORMAL_VOICE_MESSAGE_POINTS = 25;
 
-export const enqueueGift = (items, gift) => [...items, gift].sort((a, b) => b.amount - a.amount);
+// Larger gifts jump ahead. The same sender repeating the same gift while it is still queued or
+// playing becomes one combo ("×N") instead of a long line of identical animations.
+export const enqueueGift = (items, gift) => {
+  const same = gift.nickname && !gift.message ? items.findIndex((item) => !item.message && item.amount === gift.amount && item.nickname === gift.nickname) : -1;
+  if (same >= 0) return items.map((item, index) => index === same ? { ...item, count: (item.count || 1) + (gift.count || 1) } : item);
+  return [...items, gift].sort((a, b) => b.amount - a.amount);
+};

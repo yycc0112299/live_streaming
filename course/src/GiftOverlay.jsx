@@ -46,6 +46,6 @@ export default function GiftOverlay({ gifts, onDone, t }) {
       ? <div ref={canvas} className="gift-canvas" aria-hidden="true"/>
       : <><div className="gift-sprite" aria-hidden="true"><GiftArt gift={gift}/></div>
         <div className="gift-sparkles" aria-hidden="true">{Array.from({ length: gift.amount >= 100 ? 42 : gift.amount >= 50 ? 28 : gift.amount >= 25 ? 16 : 8 }, (_, i) => <i key={i} style={{ '--i': i }}>{gift.kind === 'rose' ? '🌸' : gift.kind === 'heart' ? '♥' : '✦'}</i>)}</div></>}
-    <div className="gift-caption"><strong>{current.nickname}</strong><span>{t('送出')} {t(gift.name)} · {gift.amount} {t('點')}</span>{current.message && <p>{current.message}</p>}</div>
+    <div className="gift-caption"><strong>{current.nickname}</strong><span>{t('送出')} {t(gift.name)} · {gift.amount} {t('點')}{current.count > 1 && <b key={current.count} className="gift-combo"> ×{current.count}</b>}</span>{current.message && <p>{current.message}</p>}</div>
   </div>;
 }

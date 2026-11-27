@@ -144,6 +144,46 @@ test('voice messages are synthesized by the server neural voice and served as MP
   assert.equal(preview.status, 200); assert.match(texts.at(-1), /zh-TW-HsiaoYuNeural/);
   assert.equal((await fetch(`${s.url}/api/voice/12345678-1234-1234-1234-123456789abc.mp3`)).status, 404);});
 
+test('host sees session statistics and can end the session and start a fresh one; the guest can leave', async (t) => {
+  const s = await setup(t);
+  const host = await member(t, s, 'HostStats', 'host');
+  const fan = await member(t, s, 'fan_stats'); const guest = await member(t, s, 'GuestStats');
+  s.live(true); await s.app.poll();
+  const first = s.app.store.room().broadcastId;
+  assert.ok((await emit(fan.socket, 'like')).ok);
+  assert.equal((await emit(fan.socket, 'chat', '哈囉')).error, undefined);
+  assert.ok((await emit(fan.socket, 'donate', { amount: 50, requestId: crypto.randomUUID(), broadcastId: first })).ok);
+  assert.ok((await emit(fan.socket, 'donate', { amount: 25, requestId: crypto.randomUUID(), broadcastId: first, message: '加油' })).ok);
+  await s.app.poll();
+  const stats = await emit(host.socket, 'room:stats');
+  assert.equal(stats.current.broadcastId, first);
+  assert.deepEqual([stats.current.gifts, stats.current.giftPoints, stats.current.donors, stats.current.voiceMessages, stats.current.likes], [2, 75, 1, 1, 1]);
+  assert.ok(stats.current.peakViewers >= 3); assert.equal(stats.current.topSupporter.nickname, 'fan_stats');
+  assert.ok(stats.current.chatMessages >= 1);
+  assert.ok((await emit(fan.socket, 'room:stats')).error, 'viewers cannot read host statistics');
+  assert.ok((await emit(fan.socket, 'room:restart')).error, 'viewers cannot end the session');
+  // second slot: leave at once
+  assert.ok((await emit(guest.socket, 'room:join')).ok);
+  assert.ok((await emit(fan.socket, 'room:leave')).error, 'only the guest can leave the slot');
+  assert.ok((await emit(guest.socket, 'room:leave')).ok);
+  assert.equal(s.app.store.room().guest, null);
+  assert.ok((await emit(guest.socket, 'room:join')).ok, 'can join again');
+  // end and restart
+  const restarted = await emit(host.socket, 'room:restart');
+  assert.equal(restarted.previous.broadcastId, first); assert.ok(restarted.previous.endedAt);
+  assert.equal(restarted.previous.giftPoints, 75);
+  const now = s.app.store.room();
+  assert.notEqual(now.broadcastId, first); assert.equal(now.host.nickname, 'HostStats'); assert.equal(now.guest, null);
+  const state = await (await fetch(s.url + '/api/status')).json();
+  assert.deepEqual([state.leaderboard, state.supportTotal, state.likes], [[], 0, 0], 'fresh session starts from zero');
+  assert.equal((await emit(host.socket, 'room:stats')).previous.broadcastId, first);
+  // stop a voice message for everyone
+  assert.ok((await emit(fan.socket, 'voice:skip', 'x')).error, 'viewers cannot stop voice messages');
+  const skipped = once(fan.socket, 'voice:skip');
+  assert.equal((await emit(host.socket, 'voice:skip', 'abc')).error, undefined);
+  assert.equal((await skipped)[0].id, 'abc');
+});
+
 test('each signed-in viewer receives their own leaderboard rank right after any gift', async (t) => {
   const s = await setup(t);
   await member(t, s, 'HostRank', 'host');

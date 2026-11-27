@@ -53,6 +53,7 @@ export function openStore(path) {
   if (!db.prepare('PRAGMA table_info(settings)').all().some((column) => column.name === 'voice_cooldown_seconds')) db.exec('ALTER TABLE settings ADD COLUMN voice_cooldown_seconds INTEGER NOT NULL DEFAULT 60');
   if (!db.prepare('PRAGMA table_info(settings)').all().some((column) => column.name === 'donations_enabled')) db.exec('ALTER TABLE settings ADD COLUMN donations_enabled INTEGER NOT NULL DEFAULT 1');
   if (!db.prepare('PRAGMA table_info(messages)').all().some((column) => column.name === 'gif_id')) db.exec("ALTER TABLE messages ADD COLUMN gif_id TEXT NOT NULL DEFAULT ''");
+  for (const column of ['peak_viewers', 'likes']) if (!db.prepare('PRAGMA table_info(broadcasts)').all().some((row) => row.name === column)) db.exec(`ALTER TABLE broadcasts ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`);
   const get = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
   const run = (sql, ...args) => db.prepare(sql).run(...args);
@@ -225,6 +226,28 @@ export function openStore(path) {
       if (active.guest && active.guest.userId !== id) throw new Error('第二位主播位置已有人使用。');
       run('UPDATE broadcasts SET guest_id=? WHERE id=? AND guest_id IS NULL', id, active.broadcastId);
       return active.broadcastId;
+    }),
+    notePeak: (id, viewers) => { if (id) run('UPDATE broadcasts SET peak_viewers=MAX(peak_viewers,?) WHERE id=?', viewers, id); },
+    addLike: (id) => { if (!id) return 0; run('UPDATE broadcasts SET likes=likes+1 WHERE id=?', id); return get('SELECT likes FROM broadcasts WHERE id=?', id).likes; },
+    likes: (id) => id ? get('SELECT likes FROM broadcasts WHERE id=?', id)?.likes || 0 : 0,
+    // Statistics of one broadcast session, for the host's panel and the final report.
+    summary: (id) => {
+      const b = id && get('SELECT * FROM broadcasts WHERE id=?', id);
+      if (!b) return null;
+      const end = b.ended_at || new Date().toISOString();
+      const gifts = get("SELECT COUNT(*) AS count, COALESCE(SUM(amount),0) AS points, COUNT(DISTINCT sender_id) AS donors, SUM(message<>'') AS voice FROM donations WHERE broadcast_id=?", id);
+      const chat = get('SELECT COUNT(*) AS n FROM messages WHERE at>=? AND at<=? AND deleted=0', b.started_at, end).n;
+      const top = get('SELECT u.nickname AS nickname, SUM(d.amount) AS total FROM donations d JOIN users u ON u.id=d.sender_id WHERE d.broadcast_id=? GROUP BY d.sender_id ORDER BY total DESC, MAX(d.rowid) ASC LIMIT 1', id);
+      return { broadcastId: id, host: user(b.host_id)?.nickname || '', startedAt: b.started_at, endedAt: b.ended_at, durationSeconds: Math.max(0, Math.round((Date.parse(end) - Date.parse(b.started_at)) / 1000)), peakViewers: b.peak_viewers, likes: b.likes, chatMessages: chat, gifts: gifts.count, giftPoints: gifts.points, donors: gifts.donors, voiceMessages: gifts.voice || 0, topSupporter: top ? { nickname: top.nickname, total: top.total } : null };
+    },
+    // Ends the current session and immediately opens a fresh one for the same host
+    // (leaderboard, likes and totals start from zero; the second slot is freed).
+    restart: () => transaction(() => {
+      const active = room();
+      if (!active.host) throw new Error('目前沒有進行中的直播場次。');
+      run('UPDATE broadcasts SET ended_at=? WHERE id=? AND ended_at IS NULL', new Date().toISOString(), active.broadcastId);
+      const bid = randomUUID(); run('INSERT INTO broadcasts(id,host_id,started_at) VALUES(?,?,?)', bid, active.host.userId, new Date().toISOString());
+      return { ended: active.broadcastId, broadcastId: bid };
     }),
     releaseGuest: (broadcastId, userId) => run('UPDATE broadcasts SET guest_id=NULL WHERE id=? AND guest_id=? AND ended_at IS NULL', broadcastId, userId).changes > 0,
     end: (id) => run('UPDATE broadcasts SET ended_at=? WHERE id=? AND ended_at IS NULL', new Date().toISOString(), id),

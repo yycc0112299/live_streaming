@@ -5,13 +5,25 @@ const KEY = 'g9-gift-sound';
 const MASTER = 0.07; // peak level, far below the stream audio (which plays at full volume)
 
 export function giftSoundEnabled() {
+  if (enabledNow !== null) return enabledNow;
   try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; }
 }
-export function setGiftSoundEnabled(on) {
-  try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch {}
-}
-
 let ctx = null; let out = null;
+const playing = new Set(); // every scheduled source, so switching off can silence them at once
+let enabledNow = null;
+function stopAll() {
+  for (const node of playing) { try { node.stop(); } catch {} try { node.disconnect(); } catch {} }
+  playing.clear();
+}
+export function setGiftSoundEnabled(on) {
+  enabledNow = Boolean(on);
+  try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch {}
+  if (!on) stopAll();
+  if (out && ctx) { out.gain.cancelScheduledValues(ctx.currentTime); out.gain.setValueAtTime(on ? MASTER : 0, ctx.currentTime); }
+}
+// Keep other tabs of the same browser in sync with the switch.
+try { window.addEventListener('storage', (event) => { if (event.key === KEY) setGiftSoundEnabled(event.newValue !== 'off'); }); } catch {}
+const track = (node, end) => { playing.add(node); node.onended = () => playing.delete(node); node.stop(end); };
 function audio() {
   if (ctx) return ctx;
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -36,7 +48,7 @@ function tone(t0, freq, dur, { type = 'sine', gain = 0.6, to = null, attack = 0.
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(gain, t0 + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g).connect(out); o.start(t0); o.stop(t0 + dur + 0.05);
+  o.connect(g).connect(out); o.start(t0); track(o, t0 + dur + 0.05);
 }
 function noise(t0, dur, { gain = 0.4, freq = 1200, q = 1, to = null } = {}) {
   const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
@@ -45,7 +57,7 @@ function noise(t0, dur, { gain = 0.4, freq = 1200, q = 1, to = null } = {}) {
   const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(freq, t0);
   if (to) f.frequency.exponentialRampToValueAtTime(to, t0 + dur);
   const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(gain, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  src.connect(f).connect(g).connect(out); src.start(t0);
+  src.connect(f).connect(g).connect(out); src.start(t0); track(src, t0 + dur + 0.05);
 }
 const chime = (t0, notes, step, opts) => notes.forEach((f, i) => { tone(t0 + i * step, f, 0.6, { type: 'triangle', gain: 0.5, ...opts }); tone(t0 + i * step, f * 2, 0.35, { gain: 0.12 }); });
 const pop = (t0) => { noise(t0, 0.35, { gain: 0.7, freq: 900, q: 0.7, to: 200 }); chime(t0 + 0.05, [2093, 2637], 0.06, { gain: 0.18 }); };

@@ -701,6 +701,12 @@ footer {
 .leaderboard .who { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .leaderboard .points { color:#ffe29c; font-size:13px; }
 .browser-broadcast { border-color:#5b3a4a; }
+.leaderboard li { animation:rank-flash 1.2s ease-out; }
+@keyframes rank-flash { from { background:#ffe29c33; } to { background:transparent; } }
+.my-rank { margin:10px 0 0; padding:8px 12px; border-radius:10px; background:#1a2436; color:#dce6f5; font-size:14px; }
+.my-rank b { color:#ffe29c; display:inline-block; animation:rank-pop .6s ease-out; }
+@keyframes rank-pop { from { transform:scale(1.5); } to { transform:scale(1); } }
+.leaderboard-note { margin:8px 0 0; font-size:12px; }
 .gift-sound-toggle { margin-left:10px; margin-right:auto; padding:3px 10px; border:1px solid #384457; border-radius:999px; background:#0c121e; color:#9fb0c8; font-size:12px; cursor:pointer; }
 .gift-sound-toggle.on { border-color:#3f7f6d; color:#9ff3d4; }
 .guest-idle-notice { margin:16px 0 0; padding:10px 14px; border:1px solid #6b5a2a; border-radius:12px; background:#221d10; color:#f5d98b; font-size:14px; }

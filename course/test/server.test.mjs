@@ -123,6 +123,26 @@ test('an idle second broadcaster is released automatically, but not while stream
   assert.ok((await emit(other.socket, 'room:join')).ok, 'slot is free for the next broadcaster');
 });
 
+test('each signed-in viewer receives their own leaderboard rank right after any gift', async (t) => {
+  const s = await setup(t);
+  await member(t, s, 'HostRank', 'host');
+  const a = await member(t, s, 'fan_alpha'); const b = await member(t, s, 'fan_beta');
+  s.live(true); await s.app.poll();
+  const broadcastId = s.app.store.room().broadcastId;
+  const gift = (amount) => ({ amount, requestId: crypto.randomUUID(), broadcastId });
+  const next = (socket) => new Promise((resolve) => socket.once('rank', resolve));
+  let ra = next(a.socket), rb = next(b.socket);
+  assert.ok((await emit(a.socket, 'donate', gift(25))).ok);
+  assert.deepEqual([(await ra).rank, (await ra).total], [1, 25]);
+  assert.equal((await rb).rank, null, 'beta has not given yet');
+  ra = next(a.socket); rb = next(b.socket);
+  assert.ok((await emit(b.socket, 'donate', gift(25))).ok);
+  assert.deepEqual([(await rb).rank, (await ra).rank], [2, 1], 'tie: whoever reached 25 first stays ahead');
+  ra = next(a.socket); rb = next(b.socket);
+  assert.ok((await emit(b.socket, 'donate', gift(5))).ok);
+  assert.deepEqual([(await rb).rank, (await rb).total, (await ra).rank], [1, 30, 2]);
+});
+
 test('live/offline state comes from MediaMTX and distinguishes service failure', async (t) => {
   const s = await setup(t);
   await s.app.poll();

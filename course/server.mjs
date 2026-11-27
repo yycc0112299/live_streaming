@@ -201,6 +201,10 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   const obsControls = createOBSControls(io, store, secureTransport);
   function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), guestIdleLeft: guestIdle && currentRoom.guest?.userId === guestIdle.userId ? Math.max(0, Math.ceil((guestIdle.since + guestIdleMs - now()) / 1000)) : null, room: currentRoom }; }
   function broadcast() { io.emit('state', snapshot()); }
+  function sendRanks(only) {
+    const id = room.state().broadcastId;
+    for (const peer of only ? [only] : io.sockets.sockets.values()) if (peer.data.user) peer.emit('rank', store.rank(id, peer.data.user.id));
+  }
   function releaseIdleGuest() {
     const current = room.state(); const guest = current.guest; const source = status.sources?.guest;
     if (!guest || source?.live) { guestIdle = null; return; }
@@ -258,6 +262,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
     socket.emit('chat:settings', publicSettings);
     room.attach(socket);
     broadcast();
+    sendRanks(socket);
     handle('nickname', (value) => {
       const user = account(); const nickname = store.rename(user.id, value);
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.id === user.id) peer.emit('account', store.user(user.id));
@@ -281,7 +286,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.id === user.id || peer.data.user?.id === transaction.recipient_id) { peer.emit('account', store.user(peer.data.user.id)); peer.emit('ledger:changed'); }
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.role === 'admin' && peer.data.user.id !== user.id && peer.data.user.id !== transaction.recipient_id) peer.emit('ledger:changed');
       if (!transaction.duplicate) io.emit('donation', { id: transaction.id, amount: transaction.amount, nickname: user.nickname, message: transaction.message });
-      broadcast();
+      broadcast(); sendRanks();
       return { ok: true, id: transaction.id, duplicate: Boolean(transaction.duplicate), points: store.user(user.id).points, supportTotal: store.supportTotal(room.state().broadcastId) };
     });
     handle('ledger', (before = null) => store.ledger(account(), before));

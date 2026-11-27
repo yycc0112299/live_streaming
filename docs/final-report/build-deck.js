@@ -290,9 +290,12 @@ async function icon(Comp, color, size = 256) {
   // 10 · Demo video placeholder ---------------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Final Platform Screenshot' });
   s.addText('Demo video', { placeholder: 'title' });
-  placeholderFrame(s, 2.0, 1.45, 9.33, 5.25, 'Insert demo video here (16:9)', 'PowerPoint: Insert > Video > This Device, then resize to fill this frame', 'Demo video placeholder');
-  s.addImage({ data: await icon(fa.FaCirclePlay, HEX.accent2), x: 6.17, y: 2.35, w: 1.0, h: 1.0, objectName: 'Play icon', altText: 'Video placeholder' });
-  s.addNotes('Play the recorded demo: host OBS goes live, the phone joins slot two, viewers chat and send a gift. Keep it under two minutes.');
+  // 4:21 demo, 1080p, English AI narration + English/Chinese subtitles (built by tools/edit_video.py)
+  const VIDEO = path.join(__dirname, 'video', 'Group9_demo.mp4');
+  const poster = 'image/jpeg;base64,' + require('fs').readFileSync(path.join(__dirname, 'video', 'poster.jpg')).toString('base64');
+  card(s, 1.85, 1.35, 9.63, 5.5, 'Video card');
+  s.addMedia({ type: 'video', path: VIDEO, cover: poster, x: 2.0, y: 1.45, w: 9.33, h: 5.25, objectName: 'Demo video' });
+  s.addNotes('Play the demo video (4 minutes 21 seconds; skip ahead if time is short). It shows: the site overview, joining by QR code, live chat between the phone and the computer, the six 3D gifts with sound and combos, the supporters board, AI voice messages with nine voices, the phone joining slot two over 4G with live captions, and the admin tools. Narration is English, subtitles are English and Chinese, and the original sound is never covered.');
 
   // 10a–10e · Features not shown in the demo video (screenshots) ---------------
   const SHOTS = path.join(IMG, 'shots');

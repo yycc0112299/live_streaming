@@ -59,6 +59,40 @@ function noise(t0, dur, { gain = 0.4, freq = 1200, q = 1, to = null } = {}) {
   const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(gain, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   src.connect(f).connect(g).connect(out); src.start(t0); track(src, t0 + dur + 0.05);
 }
+// Supercar engine: a V8's firing frequency is rpm/60 × 4 (= rpm/15). Sawtooth + half-order
+// "burble" + 2nd order, soft-clipped for grit, through a low-pass that opens as revs rise.
+function engine(t0, curve, level = 1) {
+  const end = t0 + curve[curve.length - 1][0];
+  const shaper = ctx.createWaveShaper();
+  const k = 2.5; const n = 1024; const shape = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; shape[i] = Math.tanh(k * x) / Math.tanh(k); }
+  shaper.curve = shape;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0);
+  shaper.connect(lp).connect(g).connect(out);
+  const layers = [['sawtooth', 1, 0.55, 0], ['square', 0.5, 0.35, -6], ['sawtooth', 2, 0.22, 7]];
+  for (const [type, order, amp, detune] of layers) {
+    const o = ctx.createOscillator(); o.type = type; o.detune.value = detune;
+    const og = ctx.createGain(); og.gain.value = amp; o.connect(og).connect(shaper);
+    for (const [dt, rpm] of curve) o.frequency[dt === 0 ? 'setValueAtTime' : 'exponentialRampToValueAtTime'](Math.max(20, (rpm / 15) * order), t0 + dt);
+    o.start(t0); track(o, end + 0.05);
+  }
+  for (const [dt, rpm, throttle = 1] of curve) {
+    const at = t0 + dt; const cutoff = 300 + (rpm / 15) * 5 * (0.5 + throttle / 2);
+    lp.frequency[dt === 0 ? 'setValueAtTime' : 'linearRampToValueAtTime'](cutoff, at);
+    g.gain[dt === 0 ? 'setValueAtTime' : 'linearRampToValueAtTime'](Math.max(0.0001, level * (0.25 + 0.55 * throttle) * Math.min(1, rpm / 4000 + 0.3)), at);
+  }
+  g.gain.linearRampToValueAtTime(0.0001, end + 0.04);
+}
+// Exhaust crackle / backfire: sharp filtered noise snaps with a low thump.
+function crackle(t0, count, spread = 0.09, level = 1) {
+  let t = t0;
+  for (let i = 0; i < count; i++) {
+    noise(t, 0.035 + Math.random() * 0.03, { gain: level * (0.6 + Math.random() * 0.5), freq: 1800 + Math.random() * 1500, q: 0.9 });
+    tone(t, 90 + Math.random() * 40, 0.06, { gain: level * 0.5, to: 45 });
+    t += spread * (0.5 + Math.random());
+  }
+}
 const chime = (t0, notes, step, opts) => notes.forEach((f, i) => { tone(t0 + i * step, f, 0.6, { type: 'triangle', gain: 0.5, ...opts }); tone(t0 + i * step, f * 2, 0.35, { gain: 0.12 }); });
 const pop = (t0) => { noise(t0, 0.35, { gain: 0.7, freq: 900, q: 0.7, to: 200 }); chime(t0 + 0.05, [2093, 2637], 0.06, { gain: 0.18 }); };
 
@@ -66,7 +100,13 @@ export const SOUNDS = {
   heart: (t) => chime(t, [880, 1319], 0.12),
   rose: (t) => chime(t, [1047, 1319, 1568, 2093], 0.11),
   rocket: (t) => { noise(t, 1.6, { gain: 0.5, freq: 300, q: 0.8, to: 3000 }); tone(t, 180, 1.5, { type: 'sine', gain: 0.25, to: 1400, attack: 0.3 }); chime(t + 1.4, [1568, 2093], 0.08, { gain: 0.3 }); },
-  car: (t) => { tone(t, 55, 2.2, { type: 'sawtooth', gain: 0.25, to: 150, attack: 0.25 }); tone(t, 110, 2.2, { type: 'square', gain: 0.06, to: 300, attack: 0.25 }); noise(t + 1.6, 0.9, { gain: 0.25, freq: 600, to: 2500 }); [0, 0.22].forEach((d) => tone(t + 2.4 + d, 440, 0.16, { type: 'square', gain: 0.12 })); },
+  // Matches the 3D car: drive in (0–1.4 s), 360° spin with revving (1.4–2.8 s), drive off.
+  car: (t) => {
+    engine(t, [[0, 950, 0.3], [0.25, 1100, 0.4], [0.3, 2200, 1], [1.15, 7600, 1], [1.22, 5200, 0.6], [1.3, 5400, 1], [2.25, 8600, 1], [2.35, 6000, 0], [2.75, 3200, 0], [2.85, 3600, 1], [3.6, 8200, 1], [3.85, 7000, 0.2]], 0.42);
+    noise(t + 0.3, 3.4, { gain: 0.08, freq: 900, q: 0.6, to: 2600 }); // intake / tyre roar
+    crackle(t + 1.17, 3, 0.05, 0.4);  // upshift pop
+    crackle(t + 2.36, 7, 0.07, 0.5);  // lift-off backfire
+  },
   party: (t) => { chime(t, [523, 659, 784, 1047], 0.13); [0.7, 1.1, 1.5, 1.8].forEach((d) => pop(t + d)); },
   carnival: (t) => { chime(t, [784, 988, 1175, 1568, 1175, 1319, 1568, 2093], 0.2, { gain: 0.4 }); [1.0, 1.5, 1.9, 2.3, 2.6].forEach((d) => pop(t + d)); },
 };

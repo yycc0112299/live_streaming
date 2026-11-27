@@ -10,11 +10,12 @@ import { Server } from 'socket.io';
 import { openStore } from './store.mjs';
 import { createOBSRoom } from './room.mjs';
 import { publishCredentials } from './scripts/media-config.mjs';
+import { createTTS } from './tts.mjs';
 
 const dist = fileURLToPath(new URL('./dist/', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
-export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), gifDir = process.env.GIF_DIR || join(dirname(dbPath === ':memory:' ? fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)) : dbPath), 'chat-gifs'), publicOrigin = process.env.PUBLIC_ORIGIN || '', mediaConfigPaths = process.env.MEDIAMTX_CONFIG ? [process.env.MEDIAMTX_CONFIG] : ['mediamtx.duo.yml', 'mediamtx.yml'].map((name) => fileURLToPath(new URL(`./.runtime/${name}`, import.meta.url))), publishAuth = null, guestIdleMs = Number(process.env.GUEST_IDLE_MS) || 180000, now = Date.now } = {}) {
+export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http://127.0.0.1:9997', hlsUrl = process.env.MEDIAMTX_HLS_URL || 'http://127.0.0.1:8888', webrtcUrl = process.env.MEDIAMTX_WEBRTC_URL || 'http://127.0.0.1:8889', pollMs = 2000, dbPath = process.env.DB_PATH || fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)), gifDir = process.env.GIF_DIR || join(dirname(dbPath === ':memory:' ? fileURLToPath(new URL('./.runtime/live.sqlite', import.meta.url)) : dbPath), 'chat-gifs'), publicOrigin = process.env.PUBLIC_ORIGIN || '', mediaConfigPaths = process.env.MEDIAMTX_CONFIG ? [process.env.MEDIAMTX_CONFIG] : ['mediamtx.duo.yml', 'mediamtx.yml'].map((name) => fileURLToPath(new URL(`./.runtime/${name}`, import.meta.url))), publishAuth = null, guestIdleMs = Number(process.env.GUEST_IDLE_MS) || 180000, now = Date.now, tts = createTTS() } = {}) {
   const store = openStore(dbPath);
   // Browser (phone or PC) publishing: the server, not the browser, holds the MediaMTX publish password.
   async function publisherAuth(path) {
@@ -165,6 +166,12 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       if (url.pathname === '/api/status' || url.pathname === '/health') {
         return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ ...snapshot(), status: 'ok' }));
       }
+      const voiceMatch = /^\/api\/voice\/(?:([a-f0-9-]{36})|preview\/([a-z-]{2,30}))\.mp3$/.exec(url.pathname);
+      if (voiceMatch) {
+        const audio = await (voiceMatch[1] ? tts.audio(voiceMatch[1]) : tts.preview(voiceMatch[2]));
+        if (!audio) return res.writeHead(404, { 'Cache-Control': 'no-store' }).end();
+        return res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': audio.length, 'Cache-Control': 'private, max-age=600' }).end(req.method === 'HEAD' ? undefined : audio);
+      }
       if (url.pathname.startsWith('/hls/')) {
         // Only the one course room is proxied; never accept a client-supplied upstream URL.
         if (!/^\/hls\/(?:live|guest)\/[a-zA-Z0-9_.-]+$/.test(url.pathname)) return res.writeHead(404).end();
@@ -199,7 +206,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
   });
   const room = createOBSRoom(io, store);
   const obsControls = createOBSControls(io, store, secureTransport);
-  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), guestIdleLeft: guestIdle && currentRoom.guest?.userId === guestIdle.userId ? Math.max(0, Math.ceil((guestIdle.since + guestIdleMs - now()) / 1000)) : null, room: currentRoom }; }
+  function snapshot() { if (store.settings().donationsEnabled) store.ensureDonationRoom(); const currentRoom = room.state(); return { ...status, viewers: [...io.of('/').sockets.values()].filter((socket) => !socket.data.obsController).length, likes, supportTotal: store.supportTotal(currentRoom.broadcastId), leaderboard: store.leaderboard(currentRoom.broadcastId), neuralVoices: tts.enabled, guestIdleLeft: guestIdle && currentRoom.guest?.userId === guestIdle.userId ? Math.max(0, Math.ceil((guestIdle.since + guestIdleMs - now()) / 1000)) : null, room: currentRoom }; }
   function broadcast() { io.emit('state', snapshot()); }
   function sendRanks(only) {
     const id = room.state().broadcastId;
@@ -285,7 +292,7 @@ export function createCourseApp({ apiUrl = process.env.MEDIAMTX_API_URL || 'http
       const transaction = store.donate(user, value, active ? room.state().broadcastId : null);
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.id === user.id || peer.data.user?.id === transaction.recipient_id) { peer.emit('account', store.user(peer.data.user.id)); peer.emit('ledger:changed'); }
       for (const peer of io.sockets.sockets.values()) if (peer.data.user?.role === 'admin' && peer.data.user.id !== user.id && peer.data.user.id !== transaction.recipient_id) peer.emit('ledger:changed');
-      if (!transaction.duplicate) io.emit('donation', { id: transaction.id, amount: transaction.amount, nickname: user.nickname, message: transaction.message });
+      if (!transaction.duplicate) io.emit('donation', { id: transaction.id, amount: transaction.amount, nickname: user.nickname, message: transaction.message, audio: transaction.message ? tts.prepare(transaction.id, transaction.message, typeof value?.voice === 'string' ? value.voice : '') : false });
       broadcast(); sendRanks();
       return { ok: true, id: transaction.id, duplicate: Boolean(transaction.duplicate), points: store.user(user.id).points, supportTotal: store.supportTotal(room.state().broadcastId) };
     });

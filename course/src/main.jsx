@@ -4,6 +4,7 @@ import { enqueueGift, GIFTS, VOICE_MESSAGE_POINTS } from '../gifts.mjs';
 import GiftOverlay from './GiftOverlay.jsx';
 import { giftSoundEnabled, setGiftSoundEnabled } from './giftSound.js';
 import { speak } from './speech.js';
+import { VOICES, DEFAULT_VOICE } from '../voices.mjs';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Hls from 'hls.js';
@@ -111,6 +112,14 @@ function App() {
   const [shareOpen, setShareOpen] = useState(false);
   const [giftSound, setGiftSound] = useState(giftSoundEnabled);
   const [myRank, setMyRank] = useState(null);
+  const [voiceChoice, setVoiceChoice] = useState(() => { try { const saved = localStorage.getItem('g9-voice'); return VOICES.some((v) => v.id === saved) ? saved : DEFAULT_VOICE; } catch { return DEFAULT_VOICE; } });
+  const previewAudio = useRef(null);
+  function chooseVoice(id) { setVoiceChoice(id); try { localStorage.setItem('g9-voice', id); } catch {} }
+  function previewVoice() {
+    previewAudio.current?.pause();
+    const audio = new Audio(`${base}api/voice/preview/${voiceChoice}.mp3`); audio.volume = 0.9; previewAudio.current = audio;
+    audio.play().catch(() => setError(t('試聽暫時無法播放。')));
+  }
   const [qrCode, setQrCode] = useState('');
   const chat = useRef(null);
   const management = ['host', 'admin'].includes(user?.role);
@@ -144,7 +153,14 @@ function App() {
         setOverlay({ ...gift, type: 'speech', text: gift.message });
         window.clearTimeout(window.__group9OverlayTimer);
         window.__group9OverlayTimer = window.setTimeout(() => setOverlay(null), 5000);
-        speak(gift.message);
+        if (gift.audio) {
+          // Natural neural voice synthesized once on the server; browser voice only as a fallback.
+          const voice = new Audio(`${base}api/voice/${gift.id}.mp3`);
+          voice.volume = 0.9;
+          let fellBack = false; const fallback = () => { if (!fellBack) { fellBack = true; speak(gift.message); } };
+          voice.addEventListener('error', fallback, { once: true });
+          voice.play().catch((error) => { if (error?.name !== 'NotAllowedError') fallback(); });
+        } else speak(gift.message);
       } else setGifts((items) => enqueueGift(items, gift));
     };
     const onLike = ({ likes }) => { setState((value) => ({ ...value, likes })); setHeart((n) => n + 1); };
@@ -190,7 +206,7 @@ function App() {
     finally { setSending(false); }
   }
   async function donate(amount, message = '') {
-    const request = pendingDonation || { amount, requestId: crypto.randomUUID(), broadcastId: room.broadcastId, senderId: user?.id, message };
+    const request = pendingDonation || { amount, requestId: crypto.randomUUID(), broadcastId: room.broadcastId, senderId: user?.id, message, ...(message ? { voice: voiceChoice } : {}) };
     setPendingDonation(request); setDonating(true); setError('');
     try { await command('donate', request); setPendingDonation(null); if (request.message) { setSpeechText(''); setVoiceCooldownUntil(Date.now() + chatSettings.voiceCooldownSeconds * 1000); } }
     catch (error) { onError(error); }
@@ -223,7 +239,7 @@ function App() {
         <div className="stream-actions"><span><b>{connected ? state.viewers : '—'}</b> {t('個連線分頁')}</span><button disabled={!connected} aria-label={t('為直播按讚')} onClick={() => socket.timeout(5000).emit('like', (timeout, result) => { if (timeout || result.error) setError(result?.error || '按讚連線逾時。'); })}>♡ <b>{state.likes}</b> {t('喜歡')}</button><span className="quality">{useWebRTC ? 'WebRTC' : 'HLS'} · {t('雙 OBS 同台直播')}</span></div>
         <section className="gift-shop" aria-label={t('直播禮物')}><div className="gift-shop-heading"><strong>{t('送禮物')}</strong><button type="button" className={`gift-sound-toggle ${giftSound ? 'on' : ''}`} aria-pressed={giftSound} onClick={() => { setGiftSoundEnabled(!giftSound); setGiftSound(!giftSound); }}>{giftSound ? '🔔' : '🔕'} {t(giftSound ? '禮物音效：開（小聲）' : '禮物音效：關')}</button><span>{t('我的點數')} <b>{user?.points || 0}</b> · {t('本場應援')} <b>{state.supportTotal || 0}</b></span></div><div className="gift-options">{GIFTS.map(({ amount, name, icon, kind }) => <button className={`gift-option gift-option-${kind}`} title={`${t(name)} ${amount} ${t('點')}`} key={amount} disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < amount || donating || Boolean(pendingDonation)} onClick={() => donate(amount)}><span className="gift-option-icon" aria-hidden="true">{icon}</span><span>{t(name)}</span><b>{amount} {t('點')}</b></button>)}</div>{pendingDonation && <div className="pending-donation"><button disabled={donating} onClick={() => donate(pendingDonation.amount)}>{t('重試同一筆禮物')}</button><button disabled={donating} onClick={() => setPendingDonation(null)}>{t('關閉待確認')}</button></div>}</section>
         <section className="leaderboard" aria-label={t('本場應援榜')}><div className="leaderboard-heading"><strong>🏆 {t('本場應援榜')}</strong><span>TOP {Math.max(state.leaderboard?.length || 0, 1)}</span></div>{state.leaderboard?.length ? <ol>{state.leaderboard.map((row, i) => <li key={`${row.nickname}-${row.total}`} className={`rank-${i + 1}`}><span className="rank">{['🥇', '🥈', '🥉'][i] || i + 1}</span><span className="who">{row.nickname}</span><span className="points">{row.total} {t('點')} · {row.gifts} {t('次')}</span></li>)}</ol> : <p className="muted">{t('還沒有人送禮物，成為第一位支持者吧！')}</p>}{user && myRank && myRank.broadcastId === room.broadcastId && <p className="my-rank" role="status">{myRank.rank ? <>{t('你目前第')} <b key={myRank.total}>{myRank.rank}</b> {t('名')} · <b>{myRank.total}</b> {t('點')}</> : t('你這一場還沒送禮物。')}</p>}<p className="muted leaderboard-note">{t('依本場累計送出的點數排名，送禮後立即更新；同分時先達到的人排前面。')}</p></section>
-        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim() && !voiceCooldownRemaining) donate(VOICE_MESSAGE_POINTS, speechText.trim()); }}><label>{t('點數語音留言')}（{VOICE_MESSAGE_POINTS} {t('點')}，{t('最多 120 字')}）<input maxLength="120" disabled={donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder={t('想讓直播唸出的內容')} required/></label><button disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < VOICE_MESSAGE_POINTS || donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining) || !speechText.trim()}>{t('花')} {VOICE_MESSAGE_POINTS} {t('點')} {t('送出語音留言')}</button><p className="muted">{t('任一路直播畫面正在播放時即可送出；語音留言每次 25 點')}{voiceCooldownRemaining ? `，${t('目前還剩')} ${voiceCooldownRemaining} ${t('秒。')}` : chatSettings.voiceCooldownSeconds ? `，${t('送出後等待')} ${chatSettings.voiceCooldownSeconds} ${t('秒。')}` : `，${t('目前不設間隔。')}`}</p></form>
+        <form className="speech-redeem" onSubmit={(event) => { event.preventDefault(); if (speechText.trim() && !voiceCooldownRemaining) donate(VOICE_MESSAGE_POINTS, speechText.trim()); }}><label>{t('點數語音留言')}（{VOICE_MESSAGE_POINTS} {t('點')}，{t('最多 120 字')}）<input maxLength="120" disabled={donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining)} value={speechText} onChange={(event) => setSpeechText(event.target.value)} placeholder={t('想讓直播唸出的內容')} required/></label>{state.neuralVoices && <div className="voice-picker"><label>{t('朗讀聲音')}<select value={voiceChoice} onChange={(event) => chooseVoice(event.target.value)}>{VOICES.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label><button type="button" className="voice-preview" onClick={previewVoice}>▶ {t('試聽')}</button></div>}<button disabled={!liveNow || !user || !room.host || room.host.userId === user.id || user.points < VOICE_MESSAGE_POINTS || donating || Boolean(pendingDonation) || Boolean(voiceCooldownRemaining) || !speechText.trim()}>{t('花')} {VOICE_MESSAGE_POINTS} {t('點')} {t('送出語音留言')}</button><p className="muted">{t('任一路直播畫面正在播放時即可送出；語音留言每次 25 點')}{voiceCooldownRemaining ? `，${t('目前還剩')} ${voiceCooldownRemaining} ${t('秒。')}` : chatSettings.voiceCooldownSeconds ? `，${t('送出後等待')} ${chatSettings.voiceCooldownSeconds} ${t('秒。')}` : `，${t('目前不設間隔。')}`}</p></form>
         <div className="play-hint">{t('觀眾可分別開啟兩路音量。登入的上鏡者已自動關閉自己的返聽；免耳機模式請先啟動本機 AEC，OBS 使用 AEC Browser Source，並停用原始麥克風與桌面音訊。')}{!useWebRTC && t('HLS 影音會比聊天稍晚。')}</div>
         {user && room.guest?.userId === user.id && state.guestIdleLeft != null && <p className="guest-idle-notice" role="status">⏳ {t('第二路尚未推流，')}{state.guestIdleLeft} {t('秒後會自動讓出位置給其他人。')}</p>}
         {user && (room.host?.userId === user.id || room.guest?.userId === user.id) && <BrowserBroadcast path={room.host?.userId === user.id ? 'live' : 'guest'} onError={onError} t={t}/>}

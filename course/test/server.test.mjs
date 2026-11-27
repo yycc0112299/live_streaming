@@ -7,8 +7,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { io as connect } from 'socket.io-client';
 import { createCourseApp } from '../server.mjs';
+import { createTTS } from '../tts.mjs';
 
-async function setup(t) {
+async function setup(t, extra = {}) {
   const gifDir = mkdtempSync(join(tmpdir(), 'group9-gif-test-'));
   t.after(() => rmSync(gifDir, { recursive: true, force: true }));
   let ready = false;
@@ -36,7 +37,7 @@ async function setup(t) {
   upstream.listen(0, '127.0.0.1');
   await once(upstream, 'listening');
   const upstreamUrl = `http://127.0.0.1:${upstream.address().port}`;
-  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, webrtcUrl: upstreamUrl, pollMs: 60000, dbPath: ':memory:', gifDir, publicOrigin: '', publishAuth: { live: 'broadcaster:live-secret', guest: 'guest_broadcaster:guest-secret' } });
+  const app = createCourseApp({ apiUrl: upstreamUrl, hlsUrl: upstreamUrl, webrtcUrl: upstreamUrl, pollMs: 60000, dbPath: ':memory:', gifDir, publicOrigin: '', publishAuth: { live: 'broadcaster:live-secret', guest: 'guest_broadcaster:guest-secret' }, ...extra });
   app.server.listen(0, '127.0.0.1');
   await once(app.server, 'listening');
   t.after(async () => { await app.close(); await new Promise((done) => upstream.close(done)); });
@@ -122,6 +123,26 @@ test('an idle second broadcaster is released automatically, but not while stream
   const other = await member(t, s, 'NextGuest');
   assert.ok((await emit(other.socket, 'room:join')).ok, 'slot is free for the next broadcaster');
 });
+
+test('voice messages are synthesized by the server neural voice and served as MP3 to every viewer', async (t) => {
+  const texts = [];
+  const tts = createTTS({ key: 'k', fetchImpl: async (url, options) => { texts.push(options.body); return new Response(new Uint8Array([0xff, 0xf3, 1]), { status: 200 }); } });
+  const s = await setup(t, { tts });
+  await member(t, s, 'HostVoice', 'host');
+  const fan = await member(t, s, 'fan_voice'); const watcher = await member(t, s, 'Watcher');
+  s.live(true); await s.app.poll();
+  const heard = once(watcher.socket, 'donation');
+  assert.ok((await emit(fan.socket, 'donate', { amount: 25, requestId: crypto.randomUUID(), broadcastId: s.app.store.room().broadcastId, message: '主播好棒！', voice: 'yunjian' })).ok);
+  const [gift] = await heard;
+  assert.equal(gift.audio, true); assert.equal(gift.message, '主播好棒！');
+  const mp3 = await fetch(`${s.url}/api/voice/${gift.id}.mp3`);
+  assert.equal(mp3.status, 200); assert.equal(mp3.headers.get('content-type'), 'audio/mpeg');
+  assert.deepEqual([...new Uint8Array(await mp3.arrayBuffer())], [0xff, 0xf3, 1]);
+  assert.match(texts[0], /主播好棒！/); assert.match(texts[0], /zh-CN-YunjianNeural/, 'the donor-chosen voice is used');
+  assert.equal((await (await fetch(`${s.url}/api/status`)).json()).neuralVoices, true);
+  const preview = await fetch(`${s.url}/api/voice/preview/hsiaoyu.mp3`);
+  assert.equal(preview.status, 200); assert.match(texts.at(-1), /zh-TW-HsiaoYuNeural/);
+  assert.equal((await fetch(`${s.url}/api/voice/12345678-1234-1234-1234-123456789abc.mp3`)).status, 404);});
 
 test('each signed-in viewer receives their own leaderboard rank right after any gift', async (t) => {
   const s = await setup(t);

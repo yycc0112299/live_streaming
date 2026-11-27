@@ -784,3 +784,7 @@ footer {
 .message-line:has(.chat-gif) { align-items:flex-start; flex-wrap:wrap; }
 @media(max-width:760px) { .topbar-tools { gap:6px; } .language-toggle { font-size:12px; padding:6px; } }
 .speech-redeem p { flex-basis:100%; margin:0; }
+.voice-picker { display:flex; gap:8px; align-items:end; flex-basis:100%; }
+.voice-picker label { flex:1; }
+.voice-picker select { width:100%; padding:11px; border:1px solid #384457; border-radius:8px; background:#0c121e; color:#e8edf7; }
+.voice-preview { padding:11px 14px; border:1px solid #3f7f6d; border-radius:8px; background:#10251f; color:#9ff3d4; cursor:pointer; white-space:nowrap; }

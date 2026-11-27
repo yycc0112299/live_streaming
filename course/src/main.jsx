@@ -3,6 +3,7 @@ import BrowserBroadcast from './BrowserBroadcast.jsx';
 import { enqueueGift, GIFTS, VOICE_MESSAGE_POINTS } from '../gifts.mjs';
 import GiftOverlay from './GiftOverlay.jsx';
 import { giftSoundEnabled, setGiftSoundEnabled } from './giftSound.js';
+import { speak } from './speech.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Hls from 'hls.js';
@@ -143,9 +144,7 @@ function App() {
         setOverlay({ ...gift, type: 'speech', text: gift.message });
         window.clearTimeout(window.__group9OverlayTimer);
         window.__group9OverlayTimer = window.setTimeout(() => setOverlay(null), 5000);
-        const speech = new SpeechSynthesisUtterance(gift.message);
-        speech.lang = 'zh-TW'; speech.rate = 1.05; speech.volume = 0.9;
-        window.speechSynthesis.speak(speech);
+        speak(gift.message);
       } else setGifts((items) => enqueueGift(items, gift));
     };
     const onLike = ({ likes }) => { setState((value) => ({ ...value, likes })); setHeart((n) => n + 1); };

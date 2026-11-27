@@ -56,11 +56,14 @@ function Player({ live, path = 'live', name, silent = false, caption = '', t }) 
       });
       return () => { reader.close(); element.removeEventListener('error', failed); element.removeEventListener('volumechange', preventSelfMonitor); clearTimeout(retryTimer); element.srcObject = null; };
     } else if (Hls.isSupported()) {
+      // A 0.8 s target stalled whenever the uploader's path to Japan had jitter (measured
+      // 70–380 ms RTT, 6 stalls in 10 s). Keep ~2.5 s of buffer: ~1 s more latency, smooth video.
       hls = new Hls({
         lowLatencyMode: true,
-        liveSyncDuration: 0.8,
-        liveMaxLatencyDuration: 1.5,
-        maxLiveSyncPlaybackRate: 1.5,
+        liveSyncDuration: 2.5,
+        liveMaxLatencyDuration: 6,
+        maxLiveSyncPlaybackRate: 1.1,
+        backBufferLength: 10,
       });
       hls.loadSource(source);
       hls.attachMedia(element);

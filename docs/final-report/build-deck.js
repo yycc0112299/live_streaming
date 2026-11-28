@@ -199,15 +199,64 @@ async function icon(Comp, color, size = 256) {
   }
   s.addNotes('Beyond the core video and chat, we added the features planned in our first presentation: viewer count, likes and gifts, plus moderation and accounts. Gifts now play as real-time 3D models rendered with WebGL, and a top-supporters board ranks fans for the current broadcast. The teacher asked that a phone can join the live stream, so a phone can now take slot two directly from the browser.');
 
+  // 5a–5b · Complete feature list (where each feature is shown) ---------------
+  // Slide numbers after these two slides are inserted: demo video = 12, screenshot slides = 13–18.
+  const VIDEO = 'Demo video (slide 12)';
+  const featureTable = (title, groups, notes) => {
+    const sl = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'System Architecture' });
+    sl.addText(title, { placeholder: 'title' });
+    const head = (t) => ({ text: t, options: { bold: true, color: HEX.dk1, fill: { color: HEX.accent1 } } });
+    const rows = [[head('Feature'), head('What it does'), head('Shown in')]];
+    for (const [group, color, items] of groups) {
+      rows.push([{ text: group, options: { bold: true, color: HEX.dk1, fill: { color }, colspan: 3 } }]);
+      for (const [f, d, where] of items) rows.push([f, d, where].map((t, i) => ({ text: t, options: { color: i === 2 ? (t.startsWith('Demo') ? HEX.accent1 : HEX.accent4) : HEX.lt1, bold: i === 0, fill: { color: HEX.dk2 } } })));
+    }
+    sl.addTable(rows, { x: 0.6, y: 1.35, w: 12.1, colW: [2.85, 6.65, 2.6], fontSize: 11.5, fontFace: THEME.bodyFontFace, border: { type: 'solid', color: HEX.dk1, pt: 1.5 }, rowH: 0.3, valign: 'middle', margin: [0, 0.1, 0, 0.1] });
+    sl.addNotes(notes);
+  };
+  featureTable('Every feature, and where we show it (1/2)', [
+    ['VIEWERS', HEX.accent5, [
+      ['Two live slots', 'Watch two broadcasters side by side; low-latency HLS (~2–3 s); per-slot sound button', VIDEO],
+      ['Join by link / QR code', 'Share dialog with copy link and QR code; works in any phone browser, no app', VIDEO],
+      ['Guest account + points', 'Automatic guest login with 1,000 demo points; change nickname; create account', VIDEO + ' · slide 17'],
+      ['Live chat', 'Socket.IO real-time chat, GIF stickers, likes with floating hearts, 5-second slow mode', VIDEO],
+      ['3D gifts with sound', 'Six WebGL gifts, quiet synthesized sounds, ×N combos, one-click sound switch', VIDEO],
+      ['Supporters board', 'Top 5 of this session, updated instantly; each viewer sees their own rank', VIDEO],
+      ['AI voice messages', '25 points; 9 Azure neural voices with preview; read aloud for everyone', VIDEO + ' · slide 13'],
+      ['Live captions (CC)', 'Broadcaster speech shown as text under their slot; viewers can hide it', VIDEO],
+      ['Points ledger', 'Own transactions with IDs; retried requests are never charged twice', 'Screenshot slide 17'],
+      ['Chinese / English', 'Whole interface switches language with one click', 'Screenshot slide 18'],
+    ]],
+  ], 'This table lists every viewer feature and where the audience can see it: either in the demo video on slide twelve or on a screenshot slide. Viewers watch two slots, join by QR code with a guest account and demo points, chat, send 3D gifts, climb the supporters board, send AI voice messages, read live captions, check their ledger and switch to English.');
+  featureTable('Every feature, and where we show it (2/2)', [
+    ['BROADCASTERS', HEX.accent4, [
+      ['OBS broadcasting', 'RTMPS over TCP 1936 with TLS and a per-IP allow-list; two slots', VIDEO],
+      ['Phone broadcasting', 'Teacher requirement: browser camera over WebRTC (4G works); server adds the key', VIDEO],
+      ['PC browser layouts', 'Camera / screen + camera / screen in one click while live; mic on/off', 'Screenshot slide 14 · 18'],
+      ['Reliability', 'Auto-reconnect with back-off; leave slot 2; idle slot released after 3 min', 'Screenshot slide 15'],
+      ['Stop a voice message', 'Broadcaster stops the reading for every viewer', 'Screenshot slide 13'],
+    ]],
+    ['ADMINS', HEX.accent2, [
+      ['Chat moderation', 'Pinned notice, slow mode, banned words, reports, mute, delete, audit log', VIDEO + ' · slide 16'],
+      ['Stream health panel', 'Bitrate, data, tracks and uptime per slot; plain warnings; VM load', 'Screenshot slide 16'],
+      ['Sessions and donations', 'Session statistics, end & start a new session, donations on/off switch', 'Screenshot slide 17 · 18'],
+    ]],
+    ['PLATFORM AND SECURITY', HEX.accent3, [
+      ['Security', 'HTTPS everywhere, scrypt passwords, publish keys and Azure key only on the VM', 'Slides 3–4'],
+      ['Cost control', 'VM auto-shutdown at 03:00 every day and a monthly budget alert', 'Azure settings (no slide)'],
+      ['Testing', '44 automated tests; every change deployed and checked on the public site', 'Slide 8'],
+    ]],
+  ], 'The second table covers broadcasters, admins and the platform. Broadcasters can use OBS or just a browser, including the phone streaming the teacher asked for; a PC browser can switch layouts live, reconnects by itself and can free the second slot. Admins moderate chat, watch stream health and manage sessions and donations. Underneath, everything runs over HTTPS, secrets stay on the server, the VM shuts down automatically every night to save credit, and 44 automated tests guard each change.');
+
   // 6 · Results: stat callouts ---------------------------------------------
   pres.addSection({ title: 'Results and Analysis' });
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Results and Analysis' });
   s.addText('Results: the platform works live on Azure', { placeholder: 'title' });
   const stats = [
     ['2 / 2', 'live slots on one page', 'Host OBS and a WebRTC source at the same time', C.accent1],
-    ['≈ 2 s', 'website latency (HLS)', 'Camera to viewer screen on the public site', C.accent5],
+    ['≈ 2–3 s', 'website latency (HLS)', 'Camera to viewer; 2.5 s buffer keeps it smooth', C.accent5],
     ['10 / 10', 'viewer tabs joined', 'Concurrent join test on the public site', C.accent3],
-    ['30 / 30', 'automated tests passed', 'Chat, accounts, ledger, WHIP auth, leaderboard', C.accent4],
+    ['44 / 44', 'automated tests passed', 'Chat, ledger, WHIP auth, TTS, captions, health', C.accent4],
   ];
   for (let i = 0; i < stats.length; i++) {
     const [big, label, d, col] = stats[i];
@@ -219,7 +268,7 @@ async function icon(Comp, color, size = 256) {
   card(s, 0.6, 4.95, 12.1, 1.7, 'Method card');
   await dotIcon(s, fa.FaClipboardCheck, 0.85, 5.42, 0.75, HEX.accent1, 'Method');
   text(s, [{ text: 'How we checked: ', options: { bold: true } }, { text: 'OBS output bytes kept growing with no reconnects, MediaMTX reported each path ready, the public page played 1280×720 video, and the phone path arrived as H.264 + Opus. Results come from the live Azure site, not only local tests.', options: { color: HEX.lt2 } }], { x: 1.85, y: 5.15, w: 10.65, h: 1.3, fontSize: 15, valign: 'middle' });
-  s.addNotes('These numbers come from the real Azure site. Both slots were live at the same time. Viewers see the stream about two seconds after the camera. Ten browser tabs joined at once without failure, and all thirty automated tests pass. Following the W10 advice, we only claim what we verified: for example, ten viewers is our tested capacity, not a guess.');
+  s.addNotes('These numbers come from the real Azure site. Both slots were live at the same time. Viewers see the stream about two seconds after the camera. Ten browser tabs joined at once without failure, and all forty-four automated tests pass. After a stutter test on a jittery network we raised the player buffer to about 2.5 seconds, so latency is now two to three seconds but playback no longer stalls. Following the W10 advice, we only claim what we verified: for example, ten viewers is our tested capacity, not a guess.');
 
   // 7 · Analysis: latency + encoder ----------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Results and Analysis' });
@@ -290,12 +339,14 @@ async function icon(Comp, color, size = 256) {
   // 10 · Demo video placeholder ---------------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Final Platform Screenshot' });
   s.addText('Demo video', { placeholder: 'title' });
-  // 4:21 demo, 1080p, English AI narration + English/Chinese subtitles (built by tools/edit_video.py)
-  const VIDEO = path.join(__dirname, 'video', 'Group9_demo.mp4');
+  // 3:39 demo, 1080p, English AI narration + English/Chinese subtitles (built by tools/edit_video.py)
+  const VIDEO_FILE = path.join(__dirname, 'video', 'Group9_demo.mp4');
   const poster = 'image/jpeg;base64,' + require('fs').readFileSync(path.join(__dirname, 'video', 'poster.jpg')).toString('base64');
   card(s, 1.85, 1.35, 9.63, 5.5, 'Video card');
-  s.addMedia({ type: 'video', path: VIDEO, cover: poster, x: 2.0, y: 1.45, w: 9.33, h: 5.25, objectName: 'Demo video' });
-  s.addNotes('Play the demo video (4 minutes 21 seconds; skip ahead if time is short). It shows: the site overview, joining by QR code, live chat between the phone and the computer, the six 3D gifts with sound and combos, the supporters board, AI voice messages with nine voices, the phone joining slot two over 4G with live captions, and the admin tools. Narration is English, subtitles are English and Chinese, and the original sound is never covered.');
+  // NO_VIDEO=1 builds the Google Slides copy: a poster image here, the video is inserted from Drive afterwards.
+  if (process.env.NO_VIDEO) s.addImage({ data: poster, x: 2.0, y: 1.45, w: 9.33, h: 5.25, objectName: 'Demo video poster', altText: 'Demo video (poster frame)' });
+  else s.addMedia({ type: 'video', path: VIDEO_FILE, cover: poster, x: 2.0, y: 1.45, w: 9.33, h: 5.25, objectName: 'Demo video' });
+  s.addNotes('Play the demo video (3 minutes 39 seconds; slow parts are sped up and marked with a speed tag). It shows: the site overview, joining by QR code, live chat between the phone and the computer, the six 3D gifts with sound and combos, the supporters board, AI voice messages with nine voices, the phone joining slot two over 4G with live captions, and the admin tools. Narration is English, subtitles are English and Chinese, and the original sound is never covered.');
 
   // 10a–10e · Features not shown in the demo video (screenshots) ---------------
   const SHOTS = path.join(IMG, 'shots');
@@ -361,6 +412,23 @@ async function icon(Comp, color, size = 256) {
       'Every gift is a SQLite transaction with a unique request ID, so a retried request is never charged twice; viewers see their own ledger, admins see everything.',
       'The whole interface switches between Chinese and English with one click (top bar).'],
     'Finally, session statistics and the ledger. The host sees the numbers of the current show and can end it and start a new one; the previous summary stays on screen, which gave us the figures for our results. Every gift is a database transaction with a unique request ID, so nobody is charged twice. And the whole interface can switch to English.');
+
+  // 10f · English UI, mic mute, donation switch -------------------------------
+  {
+    const sl = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'More Features' });
+    sl.addText('English UI, mic button, donation switch', { placeholder: 'title' });
+    notInVideo(sl);
+    card(sl, 0.6, 1.4, 7.35, 5.45, 'English UI card');
+    await fitImage(sl, 'site-en.png', 0.75, 1.55, 7.05, 4.55, 'Whole site in English');
+    text(sl, 'One click on 中文 / English switches every label, button and message', { x: 0.8, y: 6.2, w: 6.95, h: 0.5, fontSize: 13, color: C.background2, align: 'center' });
+    card(sl, 8.2, 1.4, 4.5, 2.95, 'Mic card');
+    await fitImage(sl, 'mic-muted.png', 8.3, 1.5, 4.3, 2.25, 'Broadcast panel with the microphone muted');
+    text(sl, 'Mic muted in one click (the stream keeps going)', { x: 8.3, y: 3.8, w: 4.3, h: 0.45, fontSize: 12, color: C.background2, align: 'center' });
+    card(sl, 8.2, 4.55, 4.5, 2.3, 'Donation switch card');
+    await fitImage(sl, 'admin-donations.png', 8.3, 4.65, 4.3, 1.55, 'Admin donation switch');
+    text(sl, 'Admins can turn gifts and voice messages off or on', { x: 8.3, y: 6.3, w: 4.3, h: 0.45, fontSize: 12, color: C.background2, align: 'center' });
+    sl.addNotes('Three small features that do not appear in the video. The whole interface switches between Chinese and English with one click. A broadcaster can mute and unmute the microphone without stopping the stream. And an admin can turn donations off, for example during an exam demo, and on again.');
+  }
 
   // 11 · Photos placeholder --------------------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Final Platform Screenshot' });
@@ -438,7 +506,7 @@ async function icon(Comp, color, size = 256) {
   s.addText('Questions and answers', { placeholder: 'body' });
   card(s, 7.35, 1.4, 5.4, 4.3, 'Summary card');
   text(s, 'Summary and next steps', { x: 7.65, y: 1.7, w: 4.8, h: 0.5, fontSize: 20, bold: true });
-  const nextItems = ['Delivered: OBS + phone broadcasting, chat, accounts and gifts on Azure', 'Measured: about 2 s latency, 10/10 viewers, 30/30 tests', 'Next: TURN server for strict mobile networks', 'Next: WebRTC playback for sub-second viewing', 'Next: recording and replay'];
+  const nextItems = ['Delivered: OBS + phone broadcasting, chat, accounts and gifts on Azure', 'Measured: about 2 s latency, 10/10 viewers, 44/44 tests', 'Next: TURN server for strict mobile networks', 'Next: WebRTC playback for sub-second viewing', 'Next: recording and replay'];
   text(s, nextItems.map((t, k) => ({ text: t, options: { bullet: true, breakLine: k < nextItems.length - 1 } })), { x: 7.65, y: 2.35, w: 4.85, h: 3.6, fontSize: 15, paraSpaceAfter: 8 });
   text(s, 'github.com/yycc0112299/live_streaming', { x: 0.6, y: 5.3, w: 6.3, h: 0.4, fontSize: 14, color: C.background2 });
   s.addNotes('To summarize: we delivered a working cloud platform where OBS and phones can broadcast, with chat, accounts and gifts, all on Azure. Next we would add a TURN server for strict mobile networks, WebRTC playback for sub-second viewing, and recording. Thank you, we are happy to take questions.');

@@ -32,44 +32,48 @@ SEGMENTS = [
        note='Azure VM (Ubuntu 24.04 ARM64, Japan East) · Apache + Let\'s Encrypt HTTPS · OBS → RTMPS :1936 → MediaMTX → LL-HLS (~2–3 s)',
        lines=[(0.4, 'The site runs on an Azure virtual machine, fully over HTTPS.', '網站架在 Azure 虛擬機上，全程 HTTPS 加密。'),
               (5.5, 'Two slots let two broadcasters stream side by side.', '兩個直播格，讓兩位主播同台直播。')]),
-  dict(id='02a-share', title=('Join with a link or QR code', '用連結或 QR Code 加入'), pc=(pc('15-36-20'), 3.0, 17.0),
+  dict(id='02a-share', title=('Join with a link or QR code', '用連結或 QR Code 加入'), pc=(pc('15-36-20'), 3.0, 17.0), speed=1.5,
        note='QR code generated in the browser · no app to install',
        lines=[(0.4, 'Viewers join with a link or by scanning this QR code. No app is needed.', '觀眾用連結或掃 QR Code 就能進來，不用安裝 App。')]),
   dict(id='02b-scan', title=('Join with a link or QR code', '用連結或 QR Code 加入'), pc=(pc('15-36-20'), 26.0, 32.0),
        note='Guest account created automatically · 1,000 demo points (no cash value)',
        lines=[(0.3, 'Each visitor gets a guest account with demo points.', '每位訪客自動取得帳號和示範點數。')]),
-  dict(id='03a-nick', title=('Live chat', '即時聊天'), pc=(pc('15-37-22'), 5.0, 12.5), ph=(ph('15-37-22'), 0.0),
+  dict(id='03a-nick', title=('Live chat', '即時聊天'), pc=(pc('15-37-22'), 5.0, 12.5), ph=(ph('15-37-22'), 0.0), speed=2,
        note='Phone on 4G (right) · computer view (left)',
        lines=[(0.3, 'On the phone, the viewer picks a nickname.', '手機上的觀眾先改暱稱。')]),
-  dict(id='03b-chat', title=('Live chat', '即時聊天'), pc=(pc('15-37-22'), 18.0, 34.0), ph=(ph('15-37-22'), 0.0),
+  dict(id='03b-chat', title=('Live chat', '即時聊天'), pc=(pc('15-37-22'), 18.0, 34.0), ph=(ph('15-37-22'), 0.0), speed=1.5,
        note='Socket.IO over WebSocket (TCP, in order) · 5-second slow mode · 500-char limit · banned-word filter',
        lines=[(0.5, 'The message reaches the computer instantly over WebSocket.', '訊息透過 WebSocket，馬上出現在電腦上。'),
               (9.0, 'Likes float up live.', '按讚也會即時飄出愛心。')]),
-  dict(id='04-gifts', title=('3D gifts with sound', '3D 禮物與音效'), pc=(pc('15-38-33'), 3.5, 45.0), ph=(ph('15-38-35'), 2.0),
+  dict(id='04-gifts', title=('3D gifts with sound', '3D 禮物與音效'), pc=(pc('15-38-33'), 3.5, 45.0), ph=(ph('15-38-35'), 2.0), speed=1.25,
        note='Three.js (WebGL) models, lazy-loaded · Web Audio sounds ~14 dB below speech · repeated gifts merge into ×N',
        lines=[(0.2, 'Six gift tiers, each a real-time 3D animation with its own sound.', '六種禮物，各有即時 3D 動畫和音效。'),
               (31.0, 'Repeated gifts merge into one combo.', '連續送同一種禮物，會合併成連擊。')]),
-  dict(id='05-board', title=('Top supporters', '本場應援榜'), pc=(pc('15-40-17'), 8.0, 25.0), ph=(ph('15-40-17'), 0.0),
+  dict(id='05-board', title=('Top supporters', '本場應援榜'), pc=(pc('15-40-17'), 8.0, 25.0), ph=(ph('15-40-17'), 0.0), speed=1.5,
        note='SQLite ledger · unique request IDs (no double charge) · only nicknames and points are public',
        lines=[(0.4, 'The leaderboard and each viewer\'s own rank update after every gift.', '應援榜和每個人的名次，送禮後立刻更新。')]),
-  dict(id='06a-voice', title=('AI voice messages', 'AI 語音留言'), ph=(ph('15-41-52'), 3.0, 31.0),
+  dict(id='06a-type', title=('AI voice messages', 'AI 語音留言'), ph=(ph('15-41-52'), 3.0, 13.0), speed=2,
        note='Azure AI Speech neural voices (free F0) · MP3 made once on the server · key stays on the VM',
        lines=[(0.3, 'For 25 points, a voice message is read aloud. The viewer picks one of nine neural voices.', '花 25 點送語音留言，觀眾可從九種神經語音中挑一種朗讀。')]),
+  dict(id='06a-play', title=('AI voice messages', 'AI 語音留言'), ph=(ph('15-41-52'), 13.0, 31.0),
+       note='Original speed: the voices are played as recorded on the phone', lines=[]),
   dict(id='06b-voice', title=('AI voice messages', 'AI 語音留言'), ph=(ph('15-41-52'), 54.0, 72.0),
        note='Voices include Taiwanese Mandarin, cheerful, live-commerce and sports-commentary styles',
        lines=[(0.2, 'Same message, different voices.', '同一句話，換不同的聲音。')]),
-  dict(id='07a-join', title=('Phone joins the stream (teacher requirement)', '手機加入直播（老師指定功能）'), pc=(pc('15-43-31'), 36.0, 49.0), ph=(ph('15-43-34'), 3.0),
+  dict(id='07a-join', title=('Phone joins the stream (teacher requirement)', '手機加入直播（老師指定功能）'), pc=(pc('15-43-31'), 36.0, 49.0), ph=(ph('15-43-34'), 3.0), speed=1.25, max_hold=7.0,
        note='Browser only · HTTPS camera access · slot released after 3 idle minutes',
        lines=[(0.3, 'The teacher\'s requirement: a phone joins the live stream from its browser, over 4G.', '老師要求的功能：手機用瀏覽器、透過 4G 加入直播。'),
-              (7.5, 'An idle slot is released after three minutes.', '占了位置卻沒開播，3 分鐘後會自動讓位。')]),
-  dict(id='07b-live', title=('Phone live + live captions', '手機直播與即時字幕'), pc=(pc('15-43-31'), 74.0, 108.0), ph=(ph('15-43-34'), 3.0),
+              (0.0, 'WebRTC carries the phone camera. The server adds the stream key.', '手機鏡頭用 WebRTC 推流，推流金鑰由伺服器加上。')]),
+  dict(id='07b-live', title=('Phone live + live captions', '手機直播與即時字幕'), pc=(pc('15-43-31'), 74.0, 86.0), ph=(ph('15-43-34'), 3.0), speed=1.5,
        note='WebRTC WHIP (H.264 + Opus, UDP 8189) · server adds the publish key · captions: Web Speech API → Socket.IO',
-       lines=[(0.3, 'The phone camera goes out over WebRTC. The server adds the stream key, so the phone never sees it.', '手機鏡頭用 WebRTC 推流，推流金鑰由伺服器加上，手機上看不到。'),
-              (24.0, 'Live captions turn the broadcaster\'s speech into text for every viewer.', '即時字幕把主播說的話變成文字，給所有觀眾看。')]),
-  dict(id='08-admin', title=('Admin tools', '管理員工具'), pc=(pc('15-47-27'), 0.0, 22.0),
+       lines=[]),
+  dict(id='07c-captions', title=('Phone live + live captions', '手機直播與即時字幕'), pc=(pc('15-43-31'), 86.0, 108.0), ph=(ph('15-43-34'), 3.0),
+       note='Original speed · captions come from the phone broadcaster\'s speech (Web Speech API → Socket.IO)',
+       lines=[(0.2, 'Live captions turn the broadcaster\'s speech into text for every viewer.', '即時字幕把主播說的話變成文字，給所有觀眾看。')]),
+  dict(id='08-admin', title=('Admin tools', '管理員工具'), pc=(pc('15-47-27'), 0.0, 22.0), speed=2,
        note='Audit log for every action · pinned notice · reports · mutes · session statistics',
        lines=[(0.4, 'Admins manage the pinned notice, reports and mutes, and see session statistics.', '管理員可以管理置頂公告、檢舉和禁言，並查看本場統計。')]),
-  dict(id='09-more', title=('More features (see the next slides)', '更多功能（詳見後面投影片）'), dur=16.0,
+  dict(id='09-more', title=('More features (see the next slides)', '更多功能（詳見後面投影片）'), dur=13.0,
        images=['voice-overlay.png', 'layout-both-viewer.png', 'reconnecting.png', 'admin-health.png', 'ledger.png'],
        note='Stop reading · one-click layouts · auto-reconnect · stream health panel · points ledger',
        lines=[(0.4, 'More features are on the next slides: one-click layouts, auto-reconnect, the health panel and the points ledger.', '更多功能在後面的投影片：一鍵切換畫面、斷線自動重連、直播健康面板和應援帳本。')]),
@@ -136,19 +140,24 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 def build_segment(seg):
     sid = seg['id']; os.makedirs(WORK, exist_ok=True)
-    if 'pc' in seg: src, start, end = seg['pc']; dur = end - start
-    elif 'ph' in seg: src, start, end = seg['ph']; dur = end - start
-    else: src, dur = None, seg['dur']
+    # speed > 1 plays the clip faster (video and original sound together, pitch kept by atempo).
+    S = float(seg.get('speed', 1.0))
+    if 'pc' in seg: src, start, end = seg['pc']; src_dur = end - start
+    elif 'ph' in seg: src, start, end = seg['ph']; src_dur = end - start
+    else: src, src_dur = None, seg['dur']
+    dur = src_dur / S
     audio_src = None
     if 'pc' in seg: audio_src = (seg['pc'][0], seg['pc'][1], PC_GAIN)
     elif 'ph' in seg: audio_src = (seg['ph'][0], seg['ph'][1], PHONE_GAIN)
-    mask = loud_mask(*audio_src[:2], dur, audio_src[2]) if audio_src else [False] * int(dur / 0.1 + 1)
+    raw_mask = loud_mask(*audio_src[:2], src_dur, audio_src[2]) if audio_src else [False] * int(src_dur / 0.1 + 1)
+    mask = [any(raw_mask[int(i * S):int((i + 1) * S) + 1]) for i in range(int(dur / 0.1) + 1)]
     loud_secs = sum(mask) * 0.1
+    seg = dict(seg, lines=[(want / S, en, zh) for want, en, zh in seg.get('lines', [])])
 
     # Narration placement: only in quiet windows, never past the end, never overlapping.
     placed, events, cursor = [], [], 0.0
     # A line may run up to MAX_HOLD s past the clip: the last frame is held, with no original sound.
-    MAX_HOLD = 4.0
+    MAX_HOLD = float(seg.get('max_hold', 4.0))
     clip_dur = dur
     mask = mask + [False] * int(MAX_HOLD / 0.1 + 2)
     for i, (want, en, zh) in enumerate(seg.get('lines', [])):
@@ -177,6 +186,8 @@ def build_segment(seg):
         ass.append(f'Dialogue: 0,{ass_time(0)},{ass_time(dur)},Title,,0,0,0,,{en}  {{\\fs30\\b0\\c&HC2AEA3&}}{zh}')
     if 'note' in seg:
         ass.append(f'Dialogue: 0,{ass_time(0.3)},{ass_time(dur)},Note,,0,0,0,,ⓘ {seg["note"]}')
+    if S > 1.01:
+        ass.append(f'Dialogue: 0,{ass_time(0)},{ass_time(clip_dur)},Title,,0,0,0,,{{\\an9\\pos(1880,30)\\fs34\\c&H3BB9F6&}}⏩ {S:g}×')
     for st, et, en, zh in events:
         ass.append(f'Dialogue: 1,{ass_time(st)},{ass_time(et)},SubEN,,0,0,0,,{en}')
         ass.append(f'Dialogue: 1,{ass_time(st)},{ass_time(et)},SubZH,,0,0,0,,{zh}')
@@ -187,19 +198,19 @@ def build_segment(seg):
     filters, last, n = [], '[0:v]', 1
     VID_TOP, VID_H = 96, 690
     if 'pc' in seg:
-        args += ['-ss', str(seg['pc'][1]), '-t', str(clip_dur), '-i', seg['pc'][0]]; pci = n; n += 1
+        args += ['-ss', str(seg['pc'][1]), '-t', str(src_dur), '-i', seg['pc'][0]]; pci = n; n += 1
     if 'ph' in seg:
         p_src = seg['ph'][0]; p_start = seg['ph'][1] if 'pc' not in seg else seg['pc'][1] - seg['ph'][1]
-        args += ['-ss', str(max(0, p_start)), '-t', str(clip_dur), '-i', p_src]; phi = n; n += 1
+        args += ['-ss', str(max(0, p_start)), '-t', str(src_dur), '-i', p_src]; phi = n; n += 1
     if 'pc' in seg and 'ph' in seg:
-        filters.append(f'[{pci}:v]crop=1920:980:0:40,fps={FPS},scale=1300:-2,setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[pcv]')
-        filters.append(f'[{phi}:v]fps={FPS},scale=-2:{VID_H},setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[phv]')
+        filters.append(f'[{pci}:v]setpts=(PTS-STARTPTS)/{S},crop=1920:980:0:40,fps={FPS},scale=1300:-2,setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[pcv]')
+        filters.append(f'[{phi}:v]setpts=(PTS-STARTPTS)/{S},fps={FPS},scale=-2:{VID_H},setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[phv]')
         filters.append(f'{last}[pcv]overlay=30:{VID_TOP}:shortest=0[v1]'); filters.append(f'[v1][phv]overlay=1360:{VID_TOP}[v2]'); last = '[v2]'
     elif 'pc' in seg:
-        filters.append(f'[{pci}:v]crop=1920:980:0:40,fps={FPS},scale=-2:{VID_H + 20},setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[pcv]')
+        filters.append(f'[{pci}:v]setpts=(PTS-STARTPTS)/{S},crop=1920:980:0:40,fps={FPS},scale=-2:{VID_H + 20},setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[pcv]')
         filters.append(f'{last}[pcv]overlay=(W-w)/2:{VID_TOP - 6}[v2]'); last = '[v2]'
     elif 'ph' in seg:
-        filters.append(f'[{phi}:v]fps={FPS},scale=-2:{VID_H + 20},setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[phv]')
+        filters.append(f'[{phi}:v]setpts=(PTS-STARTPTS)/{S},fps={FPS},scale=-2:{VID_H + 20},setsar=1,tpad=stop_mode=clone:stop_duration={hold:.2f}[phv]')
         filters.append(f'{last}[phv]overlay=(W-w)/2:{VID_TOP - 6}[v2]'); last = '[v2]'
     if 'images' in seg:
         each = dur / len(seg['images'])
@@ -212,8 +223,11 @@ def build_segment(seg):
     # Audio graph: original sound (+gain) + narration only in quiet gaps
     a_inputs = []
     if audio_src:
-        src_idx = pci if 'pc' in seg else phi
-        filters.append(f'[{src_idx}:a]volume={audio_src[2]},aresample=48000,aformat=channel_layouts=stereo[orig]'); a_inputs.append('[orig]')
+        # Separate input for the original sound: sharing one demuxer with the video branch can stall
+        # the graph (the audio side finishes first and the video side then waits forever).
+        a_start = seg['pc'][1] if 'pc' in seg else seg['ph'][1]
+        args += ['-ss', str(a_start), '-t', str(src_dur), '-i', audio_src[0]]; src_idx = n; n += 1
+        filters.append(f'[{src_idx}:a]atempo={S},volume={audio_src[2]},aresample=48000,aformat=channel_layouts=stereo[orig]'); a_inputs.append('[orig]')
     else:
         args += ['-f', 'lavfi', '-t', str(dur), '-i', 'anullsrc=r=48000:cl=stereo']; filters.append(f'[{n}:a]anull[orig]'); n += 1; a_inputs.append('[orig]')
     for k, (st, mp3) in enumerate(placed):
@@ -227,11 +241,20 @@ def build_segment(seg):
     print(f'{sid}: {dur:.1f}s · original sound {loud_secs:.1f}s · narration {len(placed)}/{len(seg.get("lines", []))} lines voiced')
     return out
 
+def join_segments(outs):
+    # The concat demuxer with stream copy dropped ~20 s on these files; the concat filter re-encodes safely.
+    args = [FF, '-y', '-v', 'error']
+    for o in outs: args += ['-i', o]
+    graph = ''.join(f'[{i}:v][{i}:a]' for i in range(len(outs))) + f'concat=n={len(outs)}:v=1:a=1[v][a]'
+    args += ['-filter_complex', graph, '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', str(FPS),
+             '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', OUT]
+    run(args)
+    print('wrote', OUT)
+
 if __name__ == '__main__':
     only = sys.argv[1:]
+    if only == ['join']:
+        join_segments([os.path.join(WORK, f"{s['id']}.mp4") for s in SEGMENTS]); sys.exit(0)
     outs = [build_segment(s) for s in SEGMENTS if not only or s['id'] in only]
     if only: sys.exit(0)
-    lst = os.path.join(WORK, 'concat.txt')
-    open(lst, 'w', encoding='utf-8').write(''.join(f"file '{o.replace(chr(92), '/')}'\n" for o in outs))
-    run([FF, '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', '-movflags', '+faststart', OUT])
-    print('wrote', OUT)
+    join_segments(outs)

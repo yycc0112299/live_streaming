@@ -14,7 +14,7 @@ const OUT = process.env.DECK_OUT || path.join(__dirname, 'Group 9.pptx');
 const IMG = path.join(__dirname, 'img');
 // Speaker notes = the English talk script (speech.json, also rendered to SPEECH_SCRIPT.md by gen-speech.js).
 const SPEECH = require('./speech.json');
-const note = (n) => { const t = SPEECH[n - 1]; return `${t.speaker} (~${t.seconds} s): ${t.en}\n\n中文：${t.zhFull}`; };
+const note = (n) => { const t = SPEECH[n - 1]; return `(~${t.seconds} s) ${t.en}\n\n中文：${t.zhFull}`; };
 
 const THEME = {
   name: 'Group 9 Cloud Live',

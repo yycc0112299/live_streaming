@@ -194,12 +194,17 @@ async function icon(Comp, color, size = 256) {
   }
   card(s, 6.9, 3.6, 5.8, 3.1, 'Encoder card');
   text(s, 'Skipped frames on the host PC (720p30)', { x: 7.2, y: 3.75, w: 5.2, h: 0.4, fontSize: 16, bold: true });
-  s.addChart(pres.charts.BAR, [{ name: 'Skipped frames (%)', labels: ['x264 (CPU)', 'NVENC (GPU)'], values: [19, 0] }], {
-    x: 7.1, y: 4.2, w: 5.4, h: 2.4, barDir: 'col', chartColors: [HEX.accent2, HEX.accent1],
-    showValue: true, dataLabelPosition: 'outEnd', dataLabelFormatCode: '0"%"', dataLabelColor: HEX.lt1, dataLabelFontSize: 14, dataLabelFontFace: '+mn-lt',
-    catAxisLabelColor: HEX.lt2, catAxisLabelFontSize: 13, catAxisLabelFontFace: '+mn-lt', valAxisHidden: true, valAxisMaxVal: 25, valAxisMinVal: 0,
-    valGridLine: { style: 'none' }, catGridLine: { style: 'none' }, showLegend: false, barGapWidthPct: 80, objectName: 'Encoder chart',
-  });
+  // Drawn with shapes (not a native chart): Google Slides drops the category labels of imported pptx charts.
+  const enc = [['x264 (CPU)', 19, HEX.accent2], ['NVENC (GPU)', 0, HEX.accent1]];
+  const base = 6.05;
+  s.addShape(pres.shapes.LINE, { x: 7.3, y: base, w: 5.0, h: 0, line: { color: HEX.lt2, width: 1 }, objectName: 'Encoder baseline' });
+  for (let i = 0; i < enc.length; i++) {
+    const [lab, v, col] = enc[i];
+    const cx = 8.55 + i * 2.5, bh = Math.max(0.05, (v / 25) * 1.7);
+    s.addShape(pres.shapes.RECTANGLE, { x: cx - 0.7, y: base - bh, w: 1.4, h: bh, fill: { color: col }, line: { color: col, width: 0.5 }, objectName: 'Encoder bar ' + lab });
+    text(s, v + '%', { x: cx - 0.8, y: base - bh - 0.42, w: 1.6, h: 0.38, fontSize: 18, bold: true, align: 'center', valign: 'bottom' });
+    text(s, lab, { x: cx - 1.0, y: base + 0.08, w: 2.0, h: 0.35, fontSize: 13, color: C.background2, align: 'center' });
+  }
   s.addNotes(note(4));
 
   // 8 · Final platform screenshot ------------------------------------------

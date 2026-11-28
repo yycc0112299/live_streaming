@@ -14,7 +14,7 @@ const OUT = process.env.DECK_OUT || path.join(__dirname, 'Group 9.pptx');
 const IMG = path.join(__dirname, 'img');
 // Speaker notes = the English talk script (speech.json, also rendered to SPEECH_SCRIPT.md by gen-speech.js).
 const SPEECH = require('./speech.json');
-const note = (n) => `${SPEECH[n - 1].speaker} (~${SPEECH[n - 1].seconds} s): ${SPEECH[n - 1].en}`;
+const note = (n) => { const t = SPEECH[n - 1]; return `${t.speaker} (~${t.seconds} s): ${t.en}\n\n中文：${t.zhFull}`; };
 
 const THEME = {
   name: 'Group 9 Cloud Live',
@@ -335,6 +335,18 @@ async function icon(Comp, color, size = 256) {
   s.addNotes(note(11));
 
   await pres.writeFile({ fileName: OUT });
+  // pptxgenjs keeps "\n" inside one <a:t>; PowerPoint then shows the notes as one paragraph.
+  // Split the English script and the Chinese translation into real paragraphs.
+  {
+    const fs = require('fs');
+    const JSZip = require('jszip');
+    const zip = await JSZip.loadAsync(fs.readFileSync(OUT));
+    for (const name of Object.keys(zip.files).filter((n) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(n))) {
+      const xml = await zip.file(name).async('string');
+      zip.file(name, xml.replace(/(\r?\n){2}/g, '</a:t></a:r></a:p><a:p><a:r><a:rPr lang="zh-TW" dirty="0"/><a:t>'));
+    }
+    fs.writeFileSync(OUT, await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
+  }
   if (!process.env.SKIP_THEME) { const { applyTheme } = require(APPLY_THEME); await applyTheme(OUT, THEME); }
   console.log('Wrote', OUT);
 })().catch((e) => { console.error(e); process.exit(1); });

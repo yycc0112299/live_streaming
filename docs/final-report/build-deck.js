@@ -390,11 +390,11 @@ async function icon(Comp, color, size = 256) {
     'This feature was not in the video, so here are screenshots. Viewers can spend twenty-five points on a voice message. They choose one of nine Azure neural voices and can preview it. The server creates the audio once, so everybody hears the same natural voice, and the Azure key stays on our server. If a message is unwanted, the broadcaster presses Stop reading and it stops for every viewer.');
   await shotSlide('Browser broadcasting: one-click layouts',
     { file: 'layout-panel.png', alt: 'Broadcaster panel with camera, screen plus camera and screen buttons', caption: 'Broadcaster panel: Camera · Screen + camera · Screen, and a mic button' },
-    { file: 'layout-both-viewer.png', alt: 'Viewer sees the screen with the camera in the corner', caption: 'What viewers see in slot 2 (test pictures: blue = screen, red = camera)' },
+    { file: 'layout-both-viewer.png', alt: 'Viewer sees the screen with the camera in the corner', caption: 'What viewers see in slot 2: the shared screen with the webcam in the corner' },
     ['A PC broadcaster can stream from the web page without OBS and switch between camera only, screen + camera (picture-in-picture) and screen only while live.',
       'The browser composes a fixed 1280×720 picture, so switching never reconnects or changes the resolution; only the sources in use are opened.',
       'The microphone can be muted and unmuted in one click; phones get the same mic button.'],
-    'Also not in the video: broadcasting from a computer browser. The broadcaster switches between camera, screen plus camera, and screen with one click. The browser draws everything into one 1280 by 720 picture before sending it with WebRTC, so the stream does not reconnect when the layout changes. The right picture is what viewers see; the blue and red frames are test pictures standing in for slides and a webcam.');
+    'Also not in the video: broadcasting from a computer browser. The broadcaster switches between camera, screen plus camera, and screen with one click. The browser draws everything into one 1280 by 720 picture before sending it with WebRTC, so the stream does not reconnect when the layout changes. The right picture is what viewers see: the shared screen, here our own website, with the webcam in the corner.');
   await shotSlide('Reliability: leave slot, auto-reconnect',
     { file: 'slot2-joined.png', alt: 'Second slot countdown and leave button', caption: 'Idle countdown and the "Leave the second slot" button' },
     { file: 'reconnecting.png', alt: 'Broadcast panel reconnecting automatically', caption: 'Network lost → reconnecting automatically (1/12)' },

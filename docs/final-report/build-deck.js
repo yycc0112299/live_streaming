@@ -90,8 +90,8 @@ async function icon(Comp, color, size = 256) {
   text(s, [{ text: '曹少懷', options: { bold: true, fontSize: 20, breakLine: true } }, { text: 'B11302133 · Backend + Cloud', options: { fontSize: 13, color: C.background2 } }], { x: 4.1, y: 5.2, w: 2.6, h: 0.8 });
   card(s, 7.35, 1.4, 5.4, 4.5, 'Screenshot frame');
   text(s, 'Two broadcasters, one page, one chat', { x: 7.6, y: 1.65, w: 4.9, h: 0.5, fontSize: 18, bold: true });
-  s.addImage({ path: path.join(IMG, 'dual-live.jpg'), x: 7.6, y: 2.45, w: 4.9, h: 2.19, altText: 'Our website with both broadcaster slots live', objectName: 'Dual live screenshot' });
-  text(s, 'Slot 1: OBS over RTMPS · Slot 2: browser over WebRTC', { x: 7.6, y: 4.95, w: 4.9, h: 0.8, fontSize: 14, color: C.background2 });
+  s.addImage({ path: path.join(IMG, 'dual-live-real.jpg'), x: 7.6, y: 2.45, w: 4.9, h: 2.19, altText: 'Our website with the host PC and the phone live', objectName: 'Dual live screenshot' });
+  text(s, 'Slot 1: OBS over RTMPS · Slot 2: phone over WebRTC', { x: 7.6, y: 4.95, w: 4.9, h: 0.8, fontSize: 14, color: C.background2 });
   s.addNotes('Good morning. We are Group 9. Our project is a cloud-based live streaming platform: broadcasters stream from OBS or directly from a phone browser, an Azure virtual machine relays the video, and viewers watch and chat in the browser. In the next ten minutes we cover the six required parts: architecture, results and analysis, the platform screenshot, work distribution, what we learned, and the problems we solved.');
 
   // 2 · Agenda ----------------------------------------------------------------
@@ -304,11 +304,15 @@ async function icon(Comp, color, size = 256) {
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Final Platform Screenshot' });
   s.addText('Final platform screenshot', { placeholder: 'title' });
   card(s, 0.6, 1.5, 8.6, 5.15, 'Screenshot card');
-  s.addImage({ path: path.join(IMG, 'dual-live.jpg'), x: 0.85, y: 1.75, w: 8.1, h: 3.62, altText: 'Public Group 9 website with both slots live', objectName: 'Platform screenshot' });
-  text(s, [{ text: 'Slot 1 ', options: { bold: true, color: HEX.accent1 } }, { text: 'host PC via OBS (RTMPS)    ', options: { color: HEX.lt2 } }, { text: 'Slot 2 ', options: { bold: true, color: HEX.accent4 } }, { text: 'browser via WebRTC (WHIP)', options: { color: HEX.lt2 } }], { x: 0.85, y: 5.6, w: 8.1, h: 0.4, fontSize: 15 });
+  // Real frame from the demo recording (2026-11-27): slot 1 = host PC via OBS, slot 2 = phone on 4G, live caption under slot 2.
+  s.addImage({ path: path.join(IMG, 'dual-live-real.jpg'), x: 0.85, y: 1.75, w: 8.1, h: 3.62, altText: 'Public Group 9 website with the host PC and the phone live, with a live caption', objectName: 'Platform screenshot' });
+  text(s, [{ text: 'Slot 1 ', options: { bold: true, color: HEX.accent1 } }, { text: 'host PC via OBS (RTMPS)    ', options: { color: HEX.lt2 } }, { text: 'Slot 2 ', options: { bold: true, color: HEX.accent4 } }, { text: 'phone on 4G via WebRTC, with live captions', options: { color: HEX.lt2 } }], { x: 0.85, y: 5.6, w: 8.1, h: 0.4, fontSize: 15 });
   text(s, 'group9liveb11302133.japaneast.cloudapp.azure.com/group9/', { x: 0.85, y: 6.05, w: 8.1, h: 0.35, fontSize: 13, color: C.accent5 });
-  placeholderFrame(s, 9.55, 1.5, 3.15, 5.15, 'Phone screenshot', 'Paste the phone view here (slot 2 live)', 'Phone screenshot placeholder');
-  s.addNotes('This is our public website with both slots live: on the left the host PC streams through OBS, on the right a browser source streams through WebRTC. On the right we will add a screenshot from the phone. The chat panel, gifts and account area are below and beside the players.');
+  // Phone screenshot from the phone's own screen recording at the same moment (884×1920 portrait).
+  card(s, 9.55, 1.5, 3.15, 5.15, 'Phone screenshot card');
+  { const ph = 4.45, pw = ph * 884 / 1920; s.addImage({ path: path.join(IMG, 'phone-live.jpg'), x: 9.55 + (3.15 - pw) / 2, y: 1.65, w: pw, h: ph, altText: 'Phone broadcasting to slot 2 over 4G with live captions on', objectName: 'Phone screenshot' }); }
+  text(s, 'Phone view: live on 4G, captions on', { x: 9.65, y: 6.15, w: 2.95, h: 0.4, fontSize: 12, color: C.background2, align: 'center' });
+  s.addNotes('This is our public website during the demo, with both slots live: on the left the host PC streams through OBS, and on the right is the phone, streaming over 4G through WebRTC. The text under the phone picture is a live caption of what the phone broadcaster is saying. On the right is the phone\'s own screen at the same moment: the camera preview, the live status with bytes sent, the microphone button and the live-caption panel.');
 
   // 9 · Phone broadcasting --------------------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Final Platform Screenshot' });

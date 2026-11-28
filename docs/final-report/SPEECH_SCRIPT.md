@@ -1,6 +1,6 @@
 # Group 9 — English talk script (final report)
 
-總長約 9:49：講話 6:10 + 影片 3:39。由一個人從頭講到尾（開場介紹兩位組員，分工那頁用名字稱呼，誰上台都能用）。
+總長約 9:49：講話 6:10 + 影片 3:39。由王昱程一個人從頭講到尾（第一人稱）。
 每頁都有英文講稿（上台講的）和中文對照（幫助理解），兩者也都放在簡報的講者備註裡（PowerPoint 簡報者檢視看得到）。語速約每分鐘 130 字；慢慢講、句子短，比背得一字不差重要。
 
 | # | 投影片 | 開始 | 長度 |
@@ -19,17 +19,17 @@
 
 ---
 
-## 1. Title（約 30 秒，71 字）
+## 1. Title（約 30 秒，75 字）
 
 > 重點：開場：介紹組名與兩位組員、一句話說明專案、預告六個主題。
 
 **English（上台講這段）**
 
-Good morning, everyone. We are Group 9: Wang Yu-Cheng and Tsao Shao-Huai. Our project is a cloud-based live streaming platform. Broadcasters can go live from OBS or straight from a phone browser, an Azure virtual machine relays the video, and viewers watch and chat on one web page. Today I will cover our architecture, our results, a demo, how we split the work, what we learned, and the problems we solved.
+Good morning, everyone. We are Group 9. I'm Wang Yu-Cheng, and my partner is Tsao Shao-Huai. Our project is a cloud-based live streaming platform. Broadcasters can go live from OBS or straight from a phone browser, an Azure virtual machine relays the video, and viewers watch and chat on one web page. Today I will cover our architecture, our results, a demo, how we split the work, what we learned, and the problems we solved.
 
 **中文對照**
 
-大家早安，我們是第九組，組員是王昱程和曹少懷。我們的專題是一個雲端直播平台。主播可以用 OBS，或直接用手機瀏覽器開播；影像由 Azure 虛擬機轉送；觀眾在同一個網頁上觀看和聊天。今天我會介紹系統架構、成果、Demo、分工、學到的東西，以及我們解決的問題。
+大家早安，我們是第九組。我是王昱程，我的組員是曹少懷。我們的專題是一個雲端直播平台。主播可以用 OBS，或直接用手機瀏覽器開播；影像由 Azure 虛擬機轉送；觀眾在同一個網頁上觀看和聊天。今天我會介紹系統架構、成果、Demo、分工、學到的東西，以及我們解決的問題。
 
 ## 2. System architecture（約 55 秒，122 字）
 
@@ -103,17 +103,17 @@ A few features did not fit in the video. Top left: a viewer spends points on a v
 
 有幾個功能影片裡沒放到。左上：觀眾花點數送語音留言，由 AI 聲音唸出來，主播隨時可以停止。右上：用電腦開播的主播，可以一鍵切換「只有鏡頭」、「螢幕加鏡頭」和「只有螢幕」。左下：網路斷掉時，直播會自己重新連線。右下：管理員可以即時看到兩個直播格的位元率和狀態。
 
-## 8. Work distribution（約 25 秒，50 字）
+## 8. Work distribution（約 25 秒，48 字）
 
 > 重點：分工：王昱程前端與 OBS；曹少懷後端與雲端；測試、彩排、簡報、影片一起做。
 
 **English（上台講這段）**
 
-For work distribution: Wang Yu-Cheng led the frontend, which means the website, the chat and gift interface, and the OBS setup. Tsao Shao-Huai led the backend and the cloud: the Azure VM, MediaMTX, Node.js and the database. We did the testing, the rehearsals, the slides and the demo video together.
+For work distribution: I led the frontend, which means the website, the chat and gift interface, and the OBS setup. Shao-Huai led the backend and the cloud: the Azure VM, MediaMTX, Node.js and the database. We did the testing, the rehearsals, the slides and the demo video together.
 
 **中文對照**
 
-分工方面：王昱程負責前端，包括網站、聊天和禮物介面，以及 OBS 設定。曹少懷負責後端和雲端：Azure 虛擬機、MediaMTX、Node.js 和資料庫。測試、彩排、簡報和 Demo 影片是我們一起完成的。
+分工方面：我負責前端，包括網站、聊天和禮物介面，以及 OBS 設定。少懷負責後端和雲端：Azure 虛擬機、MediaMTX、Node.js 和資料庫。測試、彩排、簡報和 Demo 影片是我們一起完成的。
 
 ## 9. What we learned（約 40 秒，83 字）
 

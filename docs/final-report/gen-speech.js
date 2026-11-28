@@ -11,7 +11,7 @@ const talk = S.reduce((a, s) => a + s.seconds, 0);
 const out = [
   '# Group 9 — English talk script (final report)',
   '',
-  `總長約 ${mmss(talk + VIDEO)}：講話 ${mmss(talk)} + 影片 3:39。由一個人從頭講到尾（開場介紹兩位組員，分工那頁用名字稱呼，誰上台都能用）。`,
+  `總長約 ${mmss(talk + VIDEO)}：講話 ${mmss(talk)} + 影片 3:39。由王昱程一個人從頭講到尾（第一人稱）。`,
   '每頁都有英文講稿（上台講的）和中文對照（幫助理解），兩者也都放在簡報的講者備註裡（PowerPoint 簡報者檢視看得到）。語速約每分鐘 130 字；慢慢講、句子短，比背得一字不差重要。',
   '',
   '| # | 投影片 | 開始 | 長度 |',

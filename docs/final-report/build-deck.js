@@ -100,10 +100,10 @@ async function icon(Comp, color, size = 256) {
   // 2 · Architecture diagram ------------------------------------------------
   pres.addSection({ title: 'System Architecture' });
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'System Architecture' });
-  s.addText('System architecture: one Azure VM, three lanes', { placeholder: 'title' });
+  s.addText('System architecture', { placeholder: 'title' });
   const srcs = [
-    ['Host PC', 'OBS · H.264 + AAC', fa.FaDesktop, HEX.accent1],
-    ['Guest PC', 'OBS · second slot', fa.FaLaptop, HEX.accent3],
+    ['Host PC', 'Streams with OBS', fa.FaDesktop, HEX.accent1],
+    ['Guest PC', 'OBS, second slot', fa.FaLaptop, HEX.accent3],
     ['Phone', 'Browser camera, no app', fa.FaMobileScreenButton, HEX.accent4],
   ];
   for (let i = 0; i < srcs.length; i++) {
@@ -113,12 +113,12 @@ async function icon(Comp, color, size = 256) {
     text(s, [{ text: srcs[i][0], options: { bold: true, fontSize: 16, breakLine: true } }, { text: srcs[i][1], options: { fontSize: 12, color: C.background2 } }], { x: 1.65, y: y + 0.3, w: 1.8, h: 0.8 });
   }
   s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 4.6, y: 1.45, w: 4.6, h: 5.2, rectRadius: 0.15, fill: { color: C.text2 }, line: { color: C.accent5, width: 1.5 }, objectName: 'Azure VM container' });
-  text(s, [{ text: 'Azure VM · B11302133', options: { bold: true, fontSize: 16, breakLine: true } }, { text: 'Ubuntu 24.04 ARM64 · Japan East · NSG allow-list', options: { fontSize: 12, color: C.background2 } }], { x: 4.85, y: 1.6, w: 4.1, h: 0.7 });
+  text(s, [{ text: 'Azure virtual machine', options: { bold: true, fontSize: 16, breakLine: true } }, { text: 'One cloud server runs everything', options: { fontSize: 12, color: C.background2 } }], { x: 4.85, y: 1.6, w: 4.1, h: 0.7 });
   const inner = [
-    ['MediaMTX', 'RTMPS ingest · WebRTC · LL-HLS', HEX.accent1],
-    ['Node.js + Socket.IO', 'REST API · chat · auth proxies', HEX.accent3],
-    ['Apache 2.4 (HTTPS 443)', 'TLS · reverse proxy · assets', HEX.accent5],
-    ['SQLite', 'Accounts · ledger · chat · audit', HEX.accent4],
+    ['MediaMTX', 'Receives and relays the live video', HEX.accent1],
+    ['Node.js + Socket.IO', 'Website, live chat and gifts', HEX.accent3],
+    ['Apache (HTTPS)', 'Secure connection for every page', HEX.accent5],
+    ['SQLite', 'Accounts, points and chat history', HEX.accent4],
   ];
   for (let i = 0; i < inner.length; i++) {
     const y = 2.45 + i * 1.02;
@@ -134,13 +134,13 @@ async function icon(Comp, color, size = 256) {
   arrow(s, 3.5, 2.22, 1.35, 0.5, HEX.accent1, 'Arrow host RTMPS');
   arrow(s, 3.5, 2.82, 1.35, 1.15, HEX.accent3, 'Arrow guest RTMPS', { flipV: true });
   arrow(s, 3.5, 3.9, 1.35, 1.82, HEX.accent4, 'Arrow phone WHIP to Node', { flipV: true });
-  text(s, 'RTMPS :1936 TCP', { x: 3.55, y: 1.6, w: 1.0, h: 0.5, fontSize: 10, color: C.accent1, bold: true });
-  text(s, 'WebRTC UDP 8189', { x: 3.55, y: 5.85, w: 1.0, h: 0.5, fontSize: 10, color: C.accent4, bold: true });
+  text(s, 'OBS stream', { x: 3.55, y: 1.6, w: 1.0, h: 0.5, fontSize: 10, color: C.accent1, bold: true });
+  text(s, 'Phone camera', { x: 3.55, y: 5.85, w: 1.0, h: 0.5, fontSize: 10, color: C.accent4, bold: true });
   arrow(s, 9.2, 3.1, 1.15, 0.01, HEX.accent5, 'Arrow to viewers');
   arrow(s, 9.2, 5.0, 1.15, 0.01, HEX.accent3, 'Arrow chat to users');
   arrow(s, 9.2, 5.25, 1.15, 0.01, HEX.accent3, 'Arrow chat from users', { flipH: true });
-  text(s, 'HLS over HTTPS', { x: 9.3, y: 2.55, w: 1.0, h: 0.5, fontSize: 10, color: C.accent5, bold: true });
-  text(s, 'WebSocket', { x: 9.3, y: 4.6, w: 1.0, h: 0.3, fontSize: 10, color: C.accent3, bold: true });
+  text(s, 'Live video', { x: 9.3, y: 2.55, w: 1.0, h: 0.5, fontSize: 10, color: C.accent5, bold: true });
+  text(s, 'Chat', { x: 9.3, y: 4.6, w: 1.0, h: 0.3, fontSize: 10, color: C.accent3, bold: true });
   s.addNotes(note(2));
 
   // 3 · Everything the platform does ------------------------------------------
@@ -292,7 +292,7 @@ async function icon(Comp, color, size = 256) {
     ['W03 Azure VM', 'IaaS means we manage the OS, ports and cost; deallocate after every session', fa.FaCloud, HEX.accent5],
     ['W05 HTML / CSS / JS', 'A responsive React page that works on a phone and a PC', fa.FaCode, HEX.accent1],
     ['W06 API and DB', 'REST status codes and SQL transactions keep gift points correct', fa.FaDatabase, HEX.accent4],
-    ['W09 Socket', 'TCP for chat, UDP for live media: real services mix both', fa.FaNetworkWired, HEX.accent3],
+    ['W09 Socket', 'Chat and live video are sent in different ways', fa.FaNetworkWired, HEX.accent3],
     ['W10 RTMP', 'OBS ingest and HLS segments; latency trades off with buffering', fa.FaVideo, HEX.accent2],
     ['W04 AI agents', 'Commit first, protect secrets, ask for tests and evidence', fa.FaRobot, HEX.accent1],
   ];
@@ -313,12 +313,12 @@ async function icon(Comp, color, size = 256) {
   const pr = (cells) => cells.map((t, k) => ({ text: t, options: { color: k === 0 ? HEX.lt1 : HEX.lt2, bold: k === 0, fill: { color: HEX.dk2 } } }));
   s.addTable([
     [ph('Problem'), ph('Cause'), ph('Solution')],
-    pr(['OBS cannot connect', 'Home / phone IP changed; port 1936 is allow-listed', 'Check IP first, add a new /32 rule per broadcaster']),
-    pr(['Echo with two hosts', 'Speakers feed the other host back in', 'Open-source AEC in OBS, mute self-monitoring']),
-    pr(['Video late vs chat', 'HLS buffers several segments', 'LL-HLS 1 s segments; WebRTC for phone upload']),
-    pr(['Phone camera blocked', 'Browsers allow cameras only on HTTPS', 'Let\'s Encrypt certificate + Apache HTTPS proxy']),
-    pr(['Frames skipped', 'CPU encoder (x264) overloaded', 'Switch OBS to NVENC: 19% to 0%']),
-    pr(['Keys pushed to GitHub', 'Private config files committed by mistake', 'Removed from repo, rotate keys, .gitignore']),
+    pr(['OBS cannot connect', 'The streamer\'s internet address changed', 'Check the address, then allow the new one']),
+    pr(['Echo with two hosts', 'Speakers feed the other host back in', 'Echo cancellation in OBS']),
+    pr(['Video behind the chat', 'The player waits to fill a buffer', 'Low-delay player settings']),
+    pr(['Phone camera blocked', 'Phones allow the camera only on secure sites', 'Added a free HTTPS certificate']),
+    pr(['Video stutters', 'The computer\'s processor was overloaded', 'Encode with the graphics card instead']),
+    pr(['Keys pushed to GitHub', 'Private files uploaded by mistake', 'Removed them and changed the keys']),
   ], { x: 0.6, y: 1.5, w: 12.1, colW: [2.9, 4.4, 4.8], fontSize: 14, fontFace: THEME.bodyFontFace, border: { type: 'solid', color: HEX.dk1, pt: 2 }, rowH: 0.72, valign: 'middle', margin: [0, 0.12, 0, 0.12] });
   s.addNotes(note(10));
 

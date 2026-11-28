@@ -12,6 +12,9 @@ const fa = require('react-icons/fa6');
 const APPLY_THEME = process.env.PPTX_APPLY_THEME || path.join(__dirname, 'apply_theme.js');
 const OUT = process.env.DECK_OUT || path.join(__dirname, 'Group 9.pptx');
 const IMG = path.join(__dirname, 'img');
+// Speaker notes = the English talk script (speech.json, also rendered to SPEECH_SCRIPT.md by gen-speech.js).
+const SPEECH = require('./speech.json');
+const note = (n) => `${SPEECH[n - 1].speaker} (~${SPEECH[n - 1].seconds} s): ${SPEECH[n - 1].en}`;
 
 const THEME = {
   name: 'Group 9 Cloud Live',
@@ -92,7 +95,7 @@ async function icon(Comp, color, size = 256) {
   text(s, 'Two broadcasters, one page, one chat', { x: 7.6, y: 1.65, w: 4.9, h: 0.5, fontSize: 18, bold: true });
   s.addImage({ path: path.join(IMG, 'dual-live-real.jpg'), x: 7.6, y: 2.45, w: 4.9, h: 2.19, altText: 'Our website with the host PC and the phone live', objectName: 'Dual live screenshot' });
   text(s, 'Slot 1: OBS over RTMPS · Slot 2: phone over WebRTC', { x: 7.6, y: 4.95, w: 4.9, h: 0.8, fontSize: 14, color: C.background2 });
-  s.addNotes('Good morning. We are Group 9. Our project is a cloud-based live streaming platform: broadcasters stream from OBS or directly from a phone browser, an Azure virtual machine relays the video, and viewers watch and chat in the browser. In the next ten minutes we cover the six required parts: architecture, results and analysis, the platform screenshot, work distribution, what we learned, and the problems we solved.');
+  s.addNotes(note(1));
 
   // 2 · Architecture diagram ------------------------------------------------
   pres.addSection({ title: 'System Architecture' });
@@ -138,7 +141,7 @@ async function icon(Comp, color, size = 256) {
   arrow(s, 9.2, 5.25, 1.15, 0.01, HEX.accent3, 'Arrow chat from users', { flipH: true });
   text(s, 'HLS over HTTPS', { x: 9.3, y: 2.55, w: 1.0, h: 0.5, fontSize: 10, color: C.accent5, bold: true });
   text(s, 'WebSocket', { x: 9.3, y: 4.6, w: 1.0, h: 0.3, fontSize: 10, color: C.accent3, bold: true });
-  s.addNotes('Everything runs on one Azure VM. Video comes in on the left: both PCs use OBS and push RTMPS over TCP port 1936, and only each broadcaster\'s current IP is allowed. A phone needs no app: its browser sends the camera with WebRTC, and the media travels over UDP port 8189. Inside the VM, MediaMTX receives the streams and turns them into low-latency HLS. The Node.js server serves the React website, the REST API and Socket.IO chat, and it proxies video to viewers. Apache provides HTTPS, and SQLite keeps accounts, the gift ledger and chat history. So chat uses TCP because every message must arrive, the phone uses UDP because a late frame is useless, and playback uses HLS over HTTPS so every browser can watch.');
+  s.addNotes(note(2));
 
   // 3 · Everything the platform does ------------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'System Architecture' });
@@ -156,7 +159,7 @@ async function icon(Comp, color, size = 256) {
     text(s, t, { x: x + 1.0, y: 1.6, w: 2.75, h: 0.6, fontSize: 18, bold: true, valign: 'middle' });
     text(s, items.map((b, k) => ({ text: b, options: { bullet: true, breakLine: k < items.length - 1 } })), { x: x + 0.25, y: 2.4, w: 3.45, h: 4.15, fontSize: 13.5, color: C.background1, paraSpaceAfter: 9 });
   }
-  s.addNotes('This is everything we built. For viewers: two live slots, joining by QR code, chat, 3D gifts with sound, a live supporters board, AI voice messages, live captions, a points ledger and an English interface. For broadcasters: OBS, or just a browser, including the phone broadcasting the teacher asked for, with one-click layouts, mic mute and automatic reconnect. For admins: moderation, a stream health panel and session statistics. Most of this appears in the demo video; the rest is on the slide after it.');
+  s.addNotes(note(3));
 
   // 6 · Results: stat callouts ---------------------------------------------
   pres.addSection({ title: 'Results and Analysis' });
@@ -197,7 +200,7 @@ async function icon(Comp, color, size = 256) {
     catAxisLabelColor: HEX.lt2, catAxisLabelFontSize: 13, catAxisLabelFontFace: '+mn-lt', valAxisHidden: true, valAxisMaxVal: 25, valAxisMinVal: 0,
     valGridLine: { style: 'none' }, catGridLine: { style: 'none' }, showLegend: false, barGapWidthPct: 80, objectName: 'Encoder chart',
   });
-  s.addNotes('These numbers come from the real Azure site. Both slots were live at the same time, ten browser tabs joined at once, and all forty-four automated tests pass. On latency: the lecture says RTMP to HLS usually adds three to five seconds; with low-latency HLS we reach two to three seconds, and the phone upload uses WebRTC, which is much faster. On encoding: with the CPU encoder our host PC skipped about nineteen percent of frames; the NVIDIA hardware encoder brought that to zero at the same quality.');
+  s.addNotes(note(4));
 
   // 8 · Final platform screenshot ------------------------------------------
   pres.addSection({ title: 'Final Platform Screenshot' });
@@ -212,7 +215,7 @@ async function icon(Comp, color, size = 256) {
   card(s, 9.55, 1.5, 3.15, 5.15, 'Phone screenshot card');
   { const ph = 4.45, pw = ph * 884 / 1920; s.addImage({ path: path.join(IMG, 'phone-live.jpg'), x: 9.55 + (3.15 - pw) / 2, y: 1.65, w: pw, h: ph, altText: 'Phone broadcasting to slot 2 over 4G with live captions on', objectName: 'Phone screenshot' }); }
   text(s, 'Phone view: live on 4G, captions on', { x: 9.65, y: 6.15, w: 2.95, h: 0.4, fontSize: 12, color: C.background2, align: 'center' });
-  s.addNotes('This is our public website during the demo, with both slots live: on the left the host PC streams through OBS, and on the right is the phone, streaming over 4G through WebRTC. The text under the phone picture is a live caption of what the phone broadcaster is saying. On the right is the phone\'s own screen at the same moment: the camera preview, the live status with bytes sent, the microphone button and the live-caption panel. This is the teacher\'s requirement: the phone needs no app. It opens the site, joins slot two and sends its camera with WebRTC; the server checks the login and adds the secret publish key itself, so the key never reaches the phone.');
+  s.addNotes(note(5));
 
   // 10 · Demo video placeholder ---------------------------------------------
   s = pres.addSlide({ masterName: 'G9 Content', sectionTitle: 'Final Platform Screenshot' });
@@ -224,7 +227,7 @@ async function icon(Comp, color, size = 256) {
   // NO_VIDEO=1 builds the Google Slides copy: a poster image here, the video is inserted from Drive afterwards.
   if (process.env.NO_VIDEO) s.addImage({ data: poster, x: 2.0, y: 1.45, w: 9.33, h: 5.25, objectName: 'Demo video poster', altText: 'Demo video (poster frame)' });
   else s.addMedia({ type: 'video', path: VIDEO_FILE, cover: poster, x: 2.0, y: 1.45, w: 9.33, h: 5.25, objectName: 'Demo video' });
-  s.addNotes('Play the demo video (3 minutes 39 seconds; slow parts are sped up and marked with a speed tag). It shows: the site overview, joining by QR code, live chat between the phone and the computer, the six 3D gifts with sound and combos, the supporters board, AI voice messages with nine voices, the phone joining slot two over 4G with live captions, and the admin tools. Narration is English, subtitles are English and Chinese, and the original sound is never covered.');
+  s.addNotes(note(6));
 
   // 7 · Features not shown in the demo video (screenshots) -------------------
   const SHOTS = path.join(IMG, 'shots');
@@ -251,7 +254,7 @@ async function icon(Comp, color, size = 256) {
     text(s, cap, { x: x + 0.2, y: y + 2.1, w: 5.55, h: 0.35, fontSize: 13, color: C.background2, align: 'center', valign: 'middle' });
   }
   text(s, 'Also: points ledger · session statistics · Chinese / English interface · donation on / off switch', { x: 0.6, y: 6.55, w: 12.1, h: 0.35, fontSize: 13, color: C.accent1, align: 'center', valign: 'middle' });
-  s.addNotes('A few features did not fit in the video. Viewers can pay points for a voice message read by an AI voice, and the broadcaster can stop it for everyone. A PC broadcaster can switch between camera, screen plus camera and screen with one click, and mute the mic. If the network drops, the broadcast reconnects by itself. Admins have a health panel showing the bitrate of both slots. We also have a points ledger, session statistics, an English interface and a donation switch.');
+  s.addNotes(note(7));
 
   // 12 · Work distribution ---------------------------------------------------
   pres.addSection({ title: 'Work Distribution' });
@@ -274,7 +277,7 @@ async function icon(Comp, color, size = 256) {
   text(s, [{ text: 'Together', options: { bold: true, fontSize: 24, breakLine: true } }, { text: 'Shared responsibilities', options: { fontSize: 14, color: C.background2 } }], { x: 9.2, y: 2.85, w: 3.2, h: 0.9 });
   const together = ['GitHub repo, branches and PRs', 'System and live testing', 'Two-broadcaster rehearsals', 'Slides and demo video'];
   text(s, together.map((t, k) => ({ text: t, options: { bullet: true, breakLine: k < together.length - 1 } })), { x: 9.2, y: 3.9, w: 3.25, h: 2.55, fontSize: 15, paraSpaceAfter: 6 });
-  s.addNotes('We kept the split from our first presentation. Wang Yu-Cheng led the frontend and OBS side, Tsao Shao-Huai led the backend and cloud side, and we did GitHub integration, testing and rehearsals together. Please adjust the bullet points if the final split changed.');
+  s.addNotes(note(8));
 
   // 13 · What we learned -----------------------------------------------------
   pres.addSection({ title: 'What We Learned' });
@@ -295,7 +298,7 @@ async function icon(Comp, color, size = 256) {
     await dotIcon(s, Ic, x + 0.25, y + 0.38, 0.8, hex, t);
     text(s, [{ text: t, options: { bold: true, fontSize: 17, breakLine: true } }, { text: d, options: { fontSize: 14, color: C.background2 } }], { x: x + 1.3, y: y + 0.22, w: 4.45, h: 1.15 });
   }
-  s.addNotes('Each lecture became part of the system. Azure taught us that with IaaS we own the ports and the bill. HTML, CSS and JavaScript became the React site. The API and database lecture became our accounts and the gift ledger. The socket lecture explains our TCP and UDP choices, and the RTMP lecture is our OBS ingest and HLS playback. From the AI agent lecture we learned to commit often, keep secrets out of the repo, and ask for evidence.');
+  s.addNotes(note(9));
 
   // 14 · Problems and solutions ---------------------------------------------
   pres.addSection({ title: 'Problems Encountered' });
@@ -312,7 +315,7 @@ async function icon(Comp, color, size = 256) {
     pr(['Frames skipped', 'CPU encoder (x264) overloaded', 'Switch OBS to NVENC: 19% to 0%']),
     pr(['Keys pushed to GitHub', 'Private config files committed by mistake', 'Removed from repo, rotate keys, .gitignore']),
   ], { x: 0.6, y: 1.5, w: 12.1, colW: [2.9, 4.4, 4.8], fontSize: 14, fontFace: THEME.bodyFontFace, border: { type: 'solid', color: HEX.dk1, pt: 2 }, rowH: 0.72, valign: 'middle', margin: [0, 0.12, 0, 0.12] });
-  s.addNotes('Here are the main problems. When a broadcaster changed network, OBS could not connect because port 1936 only allows known IPs, so we check the IP first and add a rule. Two hosts with speakers caused echo, which we solved with an open-source echo canceller. HLS made the video later than the chat, so we tuned low-latency HLS. Phones only allow the camera on HTTPS. The CPU encoder skipped frames until we switched to the GPU encoder. And we learned the hard way to keep private keys out of GitHub.');
+  s.addNotes(note(10));
 
   // 15 · Conclusion -----------------------------------------------------------
   pres.addSection({ title: 'Closing' });
@@ -324,7 +327,7 @@ async function icon(Comp, color, size = 256) {
   const nextItems = ['Delivered: OBS + phone broadcasting, chat, accounts and gifts on Azure', 'Measured: about 2 s latency, 10/10 viewers, 44/44 tests', 'Next: TURN server for strict mobile networks', 'Next: WebRTC playback for sub-second viewing', 'Next: recording and replay'];
   text(s, nextItems.map((t, k) => ({ text: t, options: { bullet: true, breakLine: k < nextItems.length - 1 } })), { x: 7.65, y: 2.35, w: 4.85, h: 3.6, fontSize: 15, paraSpaceAfter: 8 });
   text(s, 'github.com/yycc0112299/live_streaming', { x: 0.6, y: 5.3, w: 6.3, h: 0.4, fontSize: 14, color: C.background2 });
-  s.addNotes('To summarize: we delivered a working cloud platform where OBS and phones can broadcast, with chat, accounts and gifts, all on Azure. Next we would add a TURN server for strict mobile networks, WebRTC playback for sub-second viewing, and recording. Thank you, we are happy to take questions.');
+  s.addNotes(note(11));
 
   await pres.writeFile({ fileName: OUT });
   if (!process.env.SKIP_THEME) { const { applyTheme } = require(APPLY_THEME); await applyTheme(OUT, THEME); }
